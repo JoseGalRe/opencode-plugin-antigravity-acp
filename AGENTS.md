@@ -91,12 +91,13 @@ Vite+ (`vp`) owns formatting, linting, the type check (tsrs, no `typescript` pac
   `vite.config.ts`): add a package there when it ends up in the bundle.
 - Scripts: `test`, `lint:check` / `lint:fix`, `format:check` / `format:fix`, `cspell:check`, `smoke`, `release`.
   Name new ones `<tool>:<action>`.
-- CI runs per tag, never per commit (decided 2026-11-25): pushes to `main` run nothing. `.github/workflows/ci.yml`
-  runs `pnpm ready` and `pnpm build` for a `v*` tag on the Gitea mirror (self-hosted runner labelled `linux`, host mode
-  on AGAMOTTO), and for pull requests and manual runs on both. On GitHub a tag runs `publish.yml`, whose job runs the
-  same gate before publishing, so `ci.yml` skips GitHub tag pushes. Gitea reads `.github/workflows` because the
-  repository has no `.gitea/workflows`. Do not add one: Gitea would then ignore `.github/workflows`. `publish.yml`
-  runs its jobs on GitHub only (npm trusts GitHub's OIDC, not Gitea's).
+- CI runs per tag, never per commit (decided 2026-11-25): pushes to `main` run nothing. A `v*` tag runs
+  `.github/workflows/publish.yml` on both hosts: on GitHub its `publish` and `release` jobs (each runs `pnpm ready`
+  first), on the Gitea mirror its `ready` job only (`pnpm ready` and `pnpm build`, self-hosted runner labelled `linux`,
+  host mode on AGAMOTTO), so each tag leaves one run per host and no skipped run. `.github/workflows/ci.yml` runs the
+  same gate for pull requests and manual runs. Gitea reads `.github/workflows` because the repository has no
+  `.gitea/workflows`. Do not add one: Gitea would then ignore `.github/workflows`. Publishing runs on GitHub only (npm
+  trusts GitHub's OIDC, not Gitea's).
 
 ## Releases
 

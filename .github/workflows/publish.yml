@@ -4,8 +4,10 @@
 # Then it creates or updates the GitHub release of the tag like `pnpm release` does on Gitea: the CHANGELOG.md
 # section as notes and the published dist/index.js attached as `opencode-plugin-antigravity-acp-<version>.js`.
 #
-# The Gitea mirror reads this file too and gets the same tags from `pnpm release`; npm trusts only GitHub's OIDC, so
-# the job runs on GitHub only. A version already on npm (published by hand) is skipped, not failed.
+# The Gitea mirror reads this file too and gets the same tags from `pnpm release`, which already made its release. npm
+# trusts only GitHub's OIDC, so publishing runs on GitHub only; on Gitea the `ready` job checks the tag with the same
+# gate instead, on the self-hosted runner labelled `linux`. A version already on npm (published by hand) is skipped,
+# not failed.
 name: Publish
 
 on:
@@ -20,6 +22,27 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  ready:
+    if: github.server_url != 'https://github.com'
+    runs-on: linux
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@9bbca1e9dc2902adb87e8780fe5c98796985a62d # v6.1.1
+        with:
+          version: 12.22.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26.13.1
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm ready
+      - run: pnpm build
+
   publish:
     if: github.server_url == 'https://github.com'
     runs-on: ubuntu-latest
