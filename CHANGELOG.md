@@ -1,5 +1,12 @@
 # opencode-plugin-antigravity-acp
 
+## 0.4.2
+
+### Patch Changes
+
+- Each version is now also released on GitHub, with its notes and the plugin file, and published to npm from GitHub
+  Actions with npm provenance.
+
 ## 0.4.1
 
 ### Patch Changes
