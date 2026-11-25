@@ -1,6 +1,6 @@
 {
   "name": "opencode-plugin-antigravity-acp",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "private": true,
   "description": "Google Antigravity in OpenCode through the official `agy acp` Agent Client Protocol server.",
   "files": [

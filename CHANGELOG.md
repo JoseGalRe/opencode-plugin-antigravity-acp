@@ -1,5 +1,16 @@
 # opencode-plugin-antigravity-acp
 
+## 0.3.0
+
+### Minor Changes
+
+- Compacting an OpenCode session yourself now compacts the conversation in `agy`: the plugin runs `agy`'s `/compact`
+  on its session (one turn of quota). Compactions OpenCode starts on its own still stay local, since `agy` compacts
+  its context by itself.
+- The summary OpenCode replays after a compaction is no longer sent to `agy` with your next message.
+- New option `autoCompact` (`700000`, `800K`, `0.5M` or `80%`) sets when `agy` compacts on its own, through
+  `AGY_CLI_AUTO_COMPACT_OVERRIDE`.
+
 ## 0.2.1
 
 ### Patch Changes
