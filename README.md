@@ -1,5 +1,10 @@
 # opencode-plugin-antigravity-acp
 
+[![release](https://img.shields.io/github/v/release/JoseGalRe/opencode-plugin-antigravity-acp?label=release)](https://github.com/JoseGalRe/opencode-plugin-antigravity-acp/releases/latest)
+[![npm](https://img.shields.io/npm/v/@josegalre/opencode-plugin-antigravity-acp?label=npm)](https://www.npmjs.com/package/@josegalre/opencode-plugin-antigravity-acp)
+[![tests](https://img.shields.io/github/actions/workflow/status/JoseGalRe/opencode-plugin-antigravity-acp/publish.yml?label=tests)](https://github.com/JoseGalRe/opencode-plugin-antigravity-acp/actions/workflows/publish.yml)
+[![license](https://img.shields.io/github/license/JoseGalRe/opencode-plugin-antigravity-acp)](LICENSE)
+
 Use your Google Antigravity subscription in [OpenCode](https://opencode.ai) through the official `agy acp` server.
 
 > This is an independent community project. It is not affiliated with, endorsed by or sponsored by Google.
