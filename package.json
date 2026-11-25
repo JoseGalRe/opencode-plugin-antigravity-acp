@@ -8,10 +8,8 @@
   ],
   "type": "module",
   "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
-    }
+    ".": "./dist/index.js",
+    "./server": "./dist/index.js"
   },
   "scripts": {
     "prepare": "vp config --no-agent",

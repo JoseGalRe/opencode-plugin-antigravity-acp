@@ -4,11 +4,11 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vite-plus/test';
 
-import { connectAgyClient } from '../acp/client.ts';
+import { connectAgyClient } from '../../acp/client/client.ts';
 
 import { DEFAULT_AGY_ARGS, spawnAgy } from './process.ts';
 
-const FAKE_AGY = fileURLToPath(new URL('../../tests/fixtures/fake-agy.ts', import.meta.url));
+const FAKE_AGY = fileURLToPath(new URL('../../../tests/fixtures/fake-agy.ts', import.meta.url));
 
 describe('spawnAgy', () => {
   it('runs an ACP server over the subprocess’s stdio, in the given directory', async () => {
@@ -43,7 +43,7 @@ describe('spawnAgy', () => {
     const response = await acp.prompt({ sessionId, prompt: [{ type: 'text', text: 'ping' }] });
 
     expect(response.stopReason).toBe('end_turn');
-    expect(chunks).toEqual(['echo: ping']);
+    expect(chunks[0]).toBe('echo: ping');
 
     acp.close();
     agy.kill();

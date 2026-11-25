@@ -1,4 +1,4 @@
-import packageJson from '../../package.json' with { type: 'json' };
+import packageJson from '../../../package.json' with { type: 'json' };
 
 import type {
   CloseSessionRequest,
@@ -17,6 +17,8 @@ import type {
   ResumeSessionRequest,
   ResumeSessionResponse,
   SessionNotification,
+  SetSessionConfigOptionRequest,
+  SetSessionConfigOptionResponse,
   WriteTextFileRequest,
 } from '@agentclientprotocol/sdk';
 
@@ -186,6 +188,20 @@ export type AgyClient = {
    * ```
    */
   readonly closeSession: (request: CloseSessionRequest) => Promise<void>;
+  /**
+   * Sends `session/set_config_option`: selects a value of one of the session's config options, such as the model or
+   * the thinking level.
+   *
+   * @param request The `sessionId`, the option's `configId` and the `value` to select.
+   *
+   * @returns All the session's config options, with their current values after the change.
+   *
+   * @example
+   * ```ts
+   * await acp.setConfigOption({ sessionId, configId: 'model', value: 'gemini-4-neon' });
+   * ```
+   */
+  readonly setConfigOption: (request: SetSessionConfigOptionRequest) => Promise<SetSessionConfigOptionResponse>;
   /**
    * Runs one turn. Aborting `signal` sends `session/cancel` and answers the
    * turn's pending permission requests with `cancelled`; the promise still

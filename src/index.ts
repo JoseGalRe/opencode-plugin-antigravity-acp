@@ -1,6 +1,13 @@
-export { connectAgyClient } from './acp/client.ts';
-export { CLIENT_INFO } from './acp/client.types.ts';
-export { DEFAULT_AGY_ARGS, spawnAgy } from './agy/process.ts';
+import { setup } from './plugin/setup/setup.ts';
 
-export type { AgyClient, AgyClientHandlers, FileSystemHandlers } from './acp/client.types.ts';
-export type { AgyExit, AgyProcess, AgyProcessOptions } from './agy/process.types.ts';
+import type { Plugin } from '@opencode/plugin';
+
+/**
+ * The OpenCode server plugin. OpenCode loads it from this package's default export; it exports nothing else.
+ */
+const plugin: Plugin.Plugin = {
+  id: 'opencode-plugin-antigravity-acp',
+  setup,
+};
+
+export default plugin;

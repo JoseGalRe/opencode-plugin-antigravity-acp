@@ -96,11 +96,13 @@ describe('connectAgyClient', () => {
       .onRequest('session/new', () => ({ sessionId: 's1' }))
       .onRequest('session/prompt', async ({ params, client }) => {
         const { content } = await client.request('fs/read_text_file', { sessionId: params.sessionId, path: '/repo/a.txt' });
+
         await client.request('fs/write_text_file', {
           sessionId: params.sessionId,
           path: '/repo/b.txt',
           content: `${content}!`,
         });
+
         return { stopReason: 'end_turn' };
       })
       .connect(agentSide);

@@ -7,8 +7,8 @@ import { realpathSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { parseArgs } from 'node:util';
 
-import { connectAgyClient } from '../src/acp/client.ts';
-import { DEFAULT_AGY_ARGS, spawnAgy } from '../src/agy/process.ts';
+import { connectAgyClient } from '../src/acp/client/client.ts';
+import { DEFAULT_AGY_ARGS, spawnAgy } from '../src/agy/process/process.ts';
 
 const { values } = parseArgs({
   options: {

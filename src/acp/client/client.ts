@@ -66,7 +66,10 @@ export async function connectAgyClient(stream: Stream, handlers: AgyClientHandle
     initialized = await agent.request('initialize', {
       protocolVersion: PROTOCOL_VERSION,
       clientCapabilities: {
-        fs: { readTextFile: fileSystem !== undefined, writeTextFile: fileSystem !== undefined },
+        fs: {
+          readTextFile: fileSystem !== undefined,
+          writeTextFile: fileSystem !== undefined,
+        },
         terminal: false,
       },
       clientInfo: CLIENT_INFO,
@@ -124,6 +127,7 @@ export async function connectAgyClient(stream: Stream, handlers: AgyClientHandle
     closeSession: async (request) => {
       await agent.request('session/close', request);
     },
+    setConfigOption: (request) => agent.request('session/set_config_option', request),
     prompt,
     closed: connection.closed,
     close: (error) => connection.close(error),

@@ -18,15 +18,13 @@ export default defineConfig({
     clean: true,
     deps: {
       alwaysBundle: [/.*/],
-      dts: {
-        alwaysBundle: [/.*/],
-      },
       onlyBundle: false,
       onlyImport: [],
     },
-    dts: {
-      sourcemap: false,
-    },
+    /**
+     * The package is an OpenCode plugin, loaded as JavaScript; nothing imports its types.
+     */
+    dts: false,
     entry: {
       index: 'src/index.ts',
     },
@@ -37,6 +35,7 @@ export default defineConfig({
         attachDebugInfo: 'none',
       },
     },
+    minify: true,
     platform: 'node',
     root: 'src',
     sourcemap: false,
