@@ -160,7 +160,10 @@ describe('createLanguageModel', () => {
     expect(text(parts)).toBe('echo: hello ({"model":"gemini-3.8-flash","thought_level":"low"})');
 
     expect(parts).toContainEqual(expect.objectContaining({ type: 'tool-call', toolName: 'execute', providerExecuted: true }));
-    expect(parts.at(-1)).toMatchObject({ type: 'finish', usage: { inputTokens: { total: 1234 } } });
+    expect(parts.at(-1)).toMatchObject({
+      type: 'finish',
+      usage: { inputTokens: { total: 1200, noCache: 1000, cacheRead: 200 }, outputTokens: { total: 34, reasoning: 30 } },
+    });
     expect(windows).toEqual(['gemini-3.8-flash: 1048576']);
   });
 

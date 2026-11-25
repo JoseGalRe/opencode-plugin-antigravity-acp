@@ -1,21 +1,6 @@
 import type { FinishReason, StreamPart } from '../ai-sdk/ai-sdk.types.ts';
-import type { TurnTranslator } from './turn.types.ts';
-import type { StopReason, ToolCall, ToolCallContent, ToolCallUpdate } from '@agentclientprotocol/sdk';
-
-type BlockKind = 'text' | 'reasoning';
-
-type OpenBlock = {
-  readonly kind: BlockKind;
-  readonly id: string;
-};
-
-type ToolState = {
-  name: string;
-  title: string;
-  settled: boolean;
-};
-
-type ToolResult = Extract<StreamPart, { type: 'tool-result' }>['result'];
+import type { BlockKind, FinishUsage, OpenBlock, ToolResult, ToolState, TurnTranslator, TurnUsage } from './turn.types.ts';
+import type { PromptResponse, StopReason, ToolCall, ToolCallContent, ToolCallUpdate } from '@agentclientprotocol/sdk';
 
 const FINISH_REASONS: Readonly<Record<StopReason, FinishReason['unified']>> = {
   end_turn: 'stop',
@@ -151,14 +136,72 @@ export function createTurnTranslator(): TurnTranslator {
       parts.push({
         type: 'finish',
         finishReason: { unified: FINISH_REASONS[response.stopReason], raw: response.stopReason },
-        usage: {
-          inputTokens: { total: contextTokens, noCache: undefined, cacheRead: undefined, cacheWrite: undefined },
-          outputTokens: { total: undefined, text: undefined, reasoning: undefined },
-        },
+        usage: usageOf(readTurnUsage(response), contextTokens),
       });
 
       return parts;
     },
+  };
+}
+
+/**
+ * Builds the AI SDK usage OpenCode records. OpenCode 2.4.1 counts a message's input from `inputTokens.noCache`, not
+ * from `total`, so every count goes where it reads it.
+ *
+ * @param usage The turn's counts from `agy`, when it sent them.
+ * @param contextTokens The context used, from the turn's last `usage_update`: the input when there are no counts.
+ */
+function usageOf(usage: TurnUsage | undefined, contextTokens: number | undefined): FinishUsage {
+  if (!usage) {
+    return {
+      inputTokens: { total: contextTokens, noCache: contextTokens, cacheRead: undefined, cacheWrite: undefined },
+      outputTokens: { total: undefined, text: undefined, reasoning: undefined },
+    };
+  }
+
+  const { inputTokens, outputTokens, thoughtTokens, cachedReadTokens, cachedWriteTokens } = usage;
+
+  return {
+    inputTokens: {
+      total: inputTokens + (cachedReadTokens ?? 0) + (cachedWriteTokens ?? 0),
+      noCache: inputTokens,
+      cacheRead: cachedReadTokens,
+      cacheWrite: cachedWriteTokens,
+    },
+    outputTokens: {
+      total: outputTokens,
+      text: thoughtTokens === undefined ? outputTokens : Math.max(0, outputTokens - thoughtTokens),
+      reasoning: thoughtTokens,
+    },
+  };
+}
+
+function readTurnUsage(response: PromptResponse): TurnUsage | undefined {
+  const usage: unknown = 'usage' in response ? response.usage : undefined;
+
+  if (usage === null || typeof usage !== 'object') {
+    return undefined;
+  }
+
+  const count = (key: string): number | undefined => {
+    const value: unknown = key in usage ? Reflect.get(usage, key) : undefined;
+
+    return typeof value === 'number' && Number.isInteger(value) && value >= 0 ? value : undefined;
+  };
+
+  const inputTokens = count('inputTokens');
+  const outputTokens = count('outputTokens');
+
+  if (inputTokens === undefined || outputTokens === undefined) {
+    return undefined;
+  }
+
+  return {
+    inputTokens,
+    outputTokens,
+    thoughtTokens: count('thoughtTokens'),
+    cachedReadTokens: count('cachedReadTokens'),
+    cachedWriteTokens: count('cachedWriteTokens'),
   };
 }
 

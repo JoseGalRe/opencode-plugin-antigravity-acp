@@ -120,6 +120,16 @@ agent()
     await update({ sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: ` (${JSON.stringify(selected)})` } });
     await update({ sessionUpdate: 'usage_update', used: 1234, size: 1_048_576 });
 
-    return { stopReason: 'end_turn' };
+    // Like agy 1.5.16: per-turn counts, input without the cache reads, output with the thoughts.
+    const usage = {
+      inputTokens: 1000,
+      outputTokens: 34,
+      cachedReadTokens: 200,
+      cachedWriteTokens: 0,
+      thoughtTokens: 30,
+      totalTokens: 1234,
+    };
+
+    return { stopReason: 'end_turn', usage };
   })
   .connect(ndJsonStream(output, input));

@@ -90,14 +90,50 @@ describe('createTurnTranslator', () => {
     expect(closing.at(-1)).toMatchObject({ type: 'finish', finishReason: { unified: 'other', raw: 'cancelled' } });
   });
 
-  it('reports the context usage agy last sent', () => {
+  it('reports the context usage agy last sent when the turn has no token counts', () => {
     const translator = createTurnTranslator();
 
     translator.update({ sessionUpdate: 'usage_update', used: 4200, size: 1_000_000 });
 
     expect(translator.finish({ stopReason: 'max_tokens' }).at(-1)).toMatchObject({
       finishReason: { unified: 'length' },
-      usage: { inputTokens: { total: 4200 } },
+      usage: { inputTokens: { total: 4200, noCache: 4200 } },
     });
+  });
+
+  it('reports the turn’s token counts where OpenCode reads them', () => {
+    const translator = createTurnTranslator();
+
+    translator.update({ sessionUpdate: 'usage_update', used: 11_461, size: 1_048_576 });
+
+    // A second turn as agy 1.5.16 sent it: input excludes the cache reads, output includes the thoughts.
+    const response = {
+      stopReason: 'end_turn',
+      usage: {
+        inputTokens: 2144,
+        outputTokens: 26,
+        cachedReadTokens: 9291,
+        cachedWriteTokens: 0,
+        thoughtTokens: 25,
+        totalTokens: 11_461,
+      },
+    } as const;
+
+    expect(translator.finish(response).at(-1)).toMatchObject({
+      usage: {
+        inputTokens: { total: 11_435, noCache: 2144, cacheRead: 9291, cacheWrite: 0 },
+        outputTokens: { total: 26, text: 1, reasoning: 25 },
+      },
+    });
+  });
+
+  it('ignores token counts that are not counts', () => {
+    const translator = createTurnTranslator();
+
+    translator.update({ sessionUpdate: 'usage_update', used: 300, size: 1_048_576 });
+
+    const response = { stopReason: 'end_turn', usage: { inputTokens: -1, outputTokens: 'many' } } as const;
+
+    expect(translator.finish(response).at(-1)).toMatchObject({ usage: { inputTokens: { total: 300, noCache: 300 } } });
   });
 });

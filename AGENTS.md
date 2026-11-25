@@ -231,6 +231,9 @@ Group statements into blocks separated by one blank line:
   `thought_level` (`low`, `medium`, `high`, `xhigh`) and `mode` (`default`, `accept-edits`, `auto`, `plan`).
 - `session/new` also returns the plan in `_meta.antigravity.tier` (`{ name, id, upgradeUri }`), and each session sends
   `usage_update` with `used` and the context window `size` (1,048,576). Nothing in ACP reports remaining quota.
+- `session/prompt` answers with `usage` (unstable in ACP, missing from the SDK's stable types): per-turn counts where
+  `inputTokens` excludes `cachedReadTokens`, `outputTokens` includes `thoughtTokens`, and `totalTokens` equals the
+  turn's last `usage_update.used`. The `usage_update` arrives before the response. Resuming a session sends none.
 - Sessions persist on disk: a new `agy` process lists them (`session/list` by `cwd`) and reopens them with
   `session/resume`.
 - Each `agy` process listens on two loopback ports of its own (one HTTPS, one HTTP) and starts the MCP servers of the
@@ -251,6 +254,8 @@ Checked against the OpenCode binary and with the built plugin in `opencode run -
   (with `kind` `title` or `compaction`), so it must not reject those kinds. `event.messages` in the `title` hook holds
   OpenCode's title prompt, not the conversation: read `ctx.session.context` for the user's first message.
 - With no variant chosen, `event.model.variant` is `default`: pass only `agy`'s own thinking levels.
+- A message's recorded input is the `finish` usage's `inputTokens.noCache`, not `total`; its output is
+  `outputTokens.total` minus `reasoning`. With `noCache` missing the session shows 0 tokens and 0% context.
 - Permission actions are V2 names: commands are `shell` (V1's `bash`). A rule with no match means `ask`; a `deny`
   rule rejects `ctx.permission.assert` even under `opencode run --auto`.
 - Models registered after setup (`ctx.provider.reload()`) may come too late for a request made right at start:
