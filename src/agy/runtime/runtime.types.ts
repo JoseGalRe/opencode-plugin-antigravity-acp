@@ -1,5 +1,6 @@
+import type { AgyClient } from '../../acp/client/client.types.ts';
 import type { AgyCatalog } from '../../opencode/models/models.types.ts';
-import type { AgyProcessOptions } from '../process/process.types.ts';
+import type { AgyProcess, AgyProcessOptions } from '../process/process.types.ts';
 import type {
   ContentBlock,
   PromptResponse,
@@ -177,4 +178,32 @@ export type AgyRuntime = {
    * ```
    */
   readonly dispose: () => Promise<void>;
+};
+
+/**
+ * A running `agy acp` process and the ACP client connected to it.
+ */
+export type AgyConnection = {
+  /**
+   * The process: its exit and the way to stop it.
+   */
+  readonly agy: AgyProcess;
+  /**
+   * The initialized ACP client on the process's stdio.
+   */
+  readonly client: AgyClient;
+};
+
+/**
+ * The OpenCode session an ACP session belongs to, and who decides its permission requests.
+ */
+export type SessionOwner = {
+  /**
+   * The OpenCode session ID.
+   */
+  readonly sessionID: string;
+  /**
+   * The permission handler of the location that opened the session.
+   */
+  readonly requestPermission: RequestPermission;
 };

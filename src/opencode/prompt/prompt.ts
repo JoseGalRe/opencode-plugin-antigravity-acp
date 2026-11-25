@@ -1,9 +1,6 @@
 import type { PromptMessage } from '../ai-sdk/ai-sdk.types.ts';
+import type { FilePart } from './prompt.types.ts';
 import type { ContentBlock } from '@agentclientprotocol/sdk';
-
-type UserPart = Extract<PromptMessage, { role: 'user' }>['content'][number];
-
-type FilePart = Extract<UserPart, { type: 'file' }>;
 
 /**
  * Converts the new user input of an OpenCode prompt into ACP content blocks. `agy` keeps the conversation itself,

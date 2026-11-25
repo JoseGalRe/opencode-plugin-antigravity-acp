@@ -4,19 +4,15 @@ import { spawnAgy } from '../process/process.ts';
 
 import type { AgyClient } from '../../acp/client/client.types.ts';
 import type { AgyCatalog } from '../../opencode/models/models.types.ts';
-import type { AgyProcess } from '../process/process.types.ts';
-import type { AgyRuntime, AgyRuntimeOptions, AgySession, RequestPermission } from './runtime.types.ts';
+import type {
+  AgyConnection,
+  AgyRuntime,
+  AgyRuntimeOptions,
+  AgySession,
+  RequestPermission,
+  SessionOwner,
+} from './runtime.types.ts';
 import type { SessionConfigOption, SessionUpdate } from '@agentclientprotocol/sdk';
-
-type Connection = {
-  readonly agy: AgyProcess;
-  readonly client: AgyClient;
-};
-
-type Owner = {
-  readonly sessionID: string;
-  readonly requestPermission: RequestPermission;
-};
 
 /**
  * Creates the runtime. Nothing starts until the first call that needs `agy`.
@@ -28,11 +24,11 @@ type Owner = {
 export function createAgyRuntime(options: AgyRuntimeOptions): AgyRuntime {
   // Turn listeners by ACP session ID, and the OpenCode session (with its permission handler) each belongs to.
   const listeners = new Map<string, (update: SessionUpdate) => void>();
-  const owners = new Map<string, Owner>();
+  const owners = new Map<string, SessionOwner>();
   const sessions = new Map<string, Promise<AgySession>>();
   const catalogListeners = new Set<(catalog: AgyCatalog) => void>();
 
-  let connection: Promise<Connection> | undefined;
+  let connection: Promise<AgyConnection> | undefined;
   let catalog: Promise<AgyCatalog> | undefined;
 
   // Which process the current state belongs to, so the exit of an older one does not clear it.
@@ -57,7 +53,7 @@ export function createAgyRuntime(options: AgyRuntimeOptions): AgyRuntime {
     return read;
   }
 
-  async function start(): Promise<Connection> {
+  async function start(): Promise<AgyConnection> {
     const agy = spawnAgy({
       ...options.process,
       onStderr: (text) => options.log('agy stderr', text.trimEnd()),
@@ -101,7 +97,7 @@ export function createAgyRuntime(options: AgyRuntimeOptions): AgyRuntime {
     }
   }
 
-  function connect(): Promise<Connection> {
+  function connect(): Promise<AgyConnection> {
     connection ??= start().catch((error: unknown) => {
       reset();
 

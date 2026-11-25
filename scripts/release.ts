@@ -5,11 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 import { assetName, changelogSection, repositoryOf } from './release-lib.ts';
 
-type Release = {
-  readonly id: number;
-  readonly html_url: string;
-  readonly assets: readonly { readonly id: number; readonly name: string }[];
-};
+import type { GiteaRelease } from './release.types.ts';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 
@@ -26,7 +22,7 @@ function git(...args: string[]): string {
   return execFileSync('git', args, { cwd: ROOT, encoding: 'utf8' }).trim();
 }
 
-function isRelease(value: unknown): value is Release {
+function isRelease(value: unknown): value is GiteaRelease {
   return value !== null && typeof value === 'object' && 'id' in value && 'html_url' in value && 'assets' in value;
 }
 
@@ -76,7 +72,7 @@ async function call(path: string, init: RequestInit = {}, missingIsAnswer = fals
   return response;
 }
 
-async function readRelease(response: Response): Promise<Release> {
+async function readRelease(response: Response): Promise<GiteaRelease> {
   const body: unknown = await response.json();
 
   return isRelease(body) ? body : fail(`Gitea answered something that is not a release: ${JSON.stringify(body)}`);

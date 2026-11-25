@@ -118,6 +118,8 @@ in new code.
 - A module's contract lives in a sibling `<module>.types.ts` in its folder (`client/client.ts` →
   `client/client.types.ts`): its exported types and the constants that are part of that contract, such as
   `CLIENT_INFO`. The implementation file holds the behavior and its private constants.
+- Every type lives in the `*.types.ts`, also the ones only the module uses (aliases and internal state shapes): an
+  implementation or script file declares no `type`. Each type has a JSDoc, and so does each of its properties.
 - Value imports never carry inline `type` modifiers. Types come in separate `import type` statements, placed after
   every value import: local `import type` first, then external ones. A value and a type from the same file are two
   statements.

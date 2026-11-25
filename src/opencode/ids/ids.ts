@@ -1,10 +1,5 @@
+import type { VariantID } from './ids.types.ts';
 import type { Model, Provider } from '@opencode/plugin';
-
-/**
- * OpenCode's ID schemas brand plain strings without refinements, so any non-empty string is a valid ID. These turn
- * the strings `agy` and this plugin use into OpenCode's branded types.
- */
-type VariantID = Model.Info['variants'][number]['id'];
 
 /**
  * Types a string as a `Model.ID`.

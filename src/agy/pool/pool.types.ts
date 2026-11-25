@@ -23,3 +23,17 @@ export type AgyRuntimeLease = {
    */
   readonly release: () => Promise<void>;
 };
+
+/**
+ * A pooled runtime and how many leases hold it.
+ */
+export type PoolEntry = {
+  /**
+   * The runtime every lease of this entry shares.
+   */
+  readonly runtime: AgyRuntime;
+  /**
+   * The leases not yet released; the runtime is disposed when it reaches 0.
+   */
+  leases: number;
+};

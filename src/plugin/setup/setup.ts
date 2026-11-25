@@ -13,6 +13,7 @@ import { readOptions } from '../options/options.ts';
 import type { RequestPermission } from '../../agy/runtime/runtime.types.ts';
 import type { LanguageModel } from '../../opencode/ai-sdk/ai-sdk.types.ts';
 import type { AgyCatalog } from '../../opencode/models/models.types.ts';
+import type { SessionMessages } from './setup.types.ts';
 import type { Model, Plugin } from '@opencode/plugin';
 import type { AISDKHooks } from '@opencode/plugin/promise/aisdk';
 import type { SessionHooks } from '@opencode/plugin/promise/session';
@@ -53,8 +54,6 @@ const FIRST_DISCOVERY_TIMEOUT = 20_000;
 const HOOK_OPTIONS = {
   providerID: PROVIDER_ID,
 } as const;
-
-type SessionMessages = Awaited<ReturnType<Plugin.Context['session']['context']>>;
 
 /**
  * Sets the plugin up in one OpenCode location: the `antigravity` provider, the language models behind it, and the

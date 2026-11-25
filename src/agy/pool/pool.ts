@@ -1,12 +1,7 @@
 import { createAgyRuntime } from '../runtime/runtime.ts';
 
-import type { AgyRuntime, AgyRuntimeOptions } from '../runtime/runtime.types.ts';
-import type { AgyRuntimeLease } from './pool.types.ts';
-
-type Entry = {
-  readonly runtime: AgyRuntime;
-  leases: number;
-};
+import type { AgyRuntimeOptions } from '../runtime/runtime.types.ts';
+import type { AgyRuntimeLease, PoolEntry } from './pool.types.ts';
 
 /**
  * Where the pool lives on `globalThis`. OpenCode imports the plugin module afresh for each location of the same server
@@ -22,8 +17,8 @@ const POOL_KEY = Symbol.for('opencode-plugin-antigravity-acp.pool.v1');
  */
 const POOL = sharedPool();
 
-function sharedPool(): Map<string, Entry> {
-  const holder: typeof globalThis & { [POOL_KEY]?: Map<string, Entry> } = globalThis;
+function sharedPool(): Map<string, PoolEntry> {
+  const holder: typeof globalThis & { [POOL_KEY]?: Map<string, PoolEntry> } = globalThis;
 
   holder[POOL_KEY] ??= new Map();
 
