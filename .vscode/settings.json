@@ -6,7 +6,7 @@
     "*.ts": "$(capture).ts, $(capture).*.ts, $(capture)-*.ts, $(capture)-*.json",
     ".gitignore": ".gitattributes*, .gitignore*, .git-blame-ignore",
     "package.json": ".browserslist*, .editorconfig*, oxfmt*, oxlint*, cspell.json, opencode.json, *.config.ts, package*.json, tsconfig.*, pnpm*, .pnpm*, .npm*",
-    "README.md": "AGENTS.md, CLAUDE.md, CHANGELOG.md"
+    "README.md": "AGENTS.md, CLAUDE.md, CHANGELOG.md, LICENSE"
   },
   "oxc.enable": true,
   "prettier.enable": false,
