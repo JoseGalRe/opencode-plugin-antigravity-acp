@@ -79,7 +79,27 @@ Vite+ (`vp`) owns formatting, linting, the type check (tsrs, no `typescript` pac
   build otherwise), so it runs without `node_modules`, as a single plugin file. All packages are therefore
   `devDependencies`. The file's banner carries the licenses of what it bundles (`BUNDLED_LICENSES` in
   `vite.config.ts`): add a package there when it ends up in the bundle.
-- Scripts: `test`, `lint:check` / `lint:fix`, `format:check` / `format:fix`, `smoke`. Name new ones `<tool>:<action>`.
+- Scripts: `test`, `lint:check` / `lint:fix`, `format:check` / `format:fix`, `cspell:check`, `smoke`, `release`.
+  Name new ones `<tool>:<action>`.
+- CI (`.gitea/workflows/ci.yml`) runs `pnpm ready` and `pnpm build` on every push to `main` and every pull request,
+  on the self-hosted `linux` runner. It publishes nothing.
+
+## Releases
+
+Every new version ships as a Gitea release, with its notes and the plugin file ready to install:
+
+1. Bump `version` in `package.json` and write its `## <version>` section in `CHANGELOG.md` (`### Minor Changes` or
+   `### Patch Changes`, one bullet per change, written for the user).
+2. Commit.
+3. Run `GITEA_TOKEN=… pnpm release` (`scripts/release.ts`). It refuses uncommitted tracked changes, a missing
+   CHANGELOG section, or a tag `v<version>` that points elsewhere. It pushes the branch and the tag (created on HEAD
+   when missing), builds again (`pnpm run build`), and creates or updates the release on Gitea
+   (`http://127.0.0.1:7531`; `GITEA_URL` overrides) with that section as its notes and `dist/index.js` attached as
+   `opencode-plugin-antigravity-acp-<version>.js`. `pnpm release --dry-run` only checks and prints.
+
+The attached file is the whole plugin: dropped into `~/.config/opencode/plugins/`, OpenCode loads it with the default
+options (verified with 0.1.0).
+
 - Scripts run directly with Node (`node scripts/x.ts`): keep code erasable, and write every relative import, `import
   type` included, with its `.ts` extension.
 - Functions and closures only; no classes. Strict TypeScript; no `any`, `enum` or non-null assertions.

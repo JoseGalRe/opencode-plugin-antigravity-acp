@@ -122,7 +122,7 @@ export default defineConfig({
     },
     environment: 'node',
     globals: true,
-    include: ['src/**/*.test.ts'],
+    include: ['src/**/*.test.ts', 'scripts/**/*.test.ts'],
     testTimeout: 30_000,
   },
   staged: {

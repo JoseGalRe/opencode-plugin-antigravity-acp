@@ -21,7 +21,8 @@
     "format:fix": "vp format",
     "cspell:check": "cspell lint",
     "ready": "vp check && vp test",
-    "smoke": "node scripts/smoke-agy.ts --session"
+    "smoke": "node scripts/smoke-agy.ts --session",
+    "release": "node scripts/release.ts"
   },
   "devDependencies": {
     "@agentclientprotocol/sdk": "2.12.0",

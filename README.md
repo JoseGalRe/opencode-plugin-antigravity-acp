@@ -66,7 +66,11 @@ None of this is a guarantee: the decision is Google's, and the risk is yours. A 
 
 ## Install
 
-Build the plugin, then add the repository to `plugins` in your `opencode.json(c)`:
+**From a release.** Download `opencode-plugin-antigravity-acp-<version>.js` from the repository's releases and put
+it in `~/.config/opencode/plugins/`. OpenCode loads it on its own; it runs `agy` from your `PATH` with no extra
+flags.
+
+**From source, with options.** Build the plugin, then add the repository to `plugins` in your `opencode.json(c)`:
 
 ```bash
 pnpm install && pnpm build
@@ -98,6 +102,7 @@ pnpm install       # also points git at the hooks in .vite-hooks/
 pnpm ready         # format check, lint, type check and tests
 pnpm build         # dist/index.js, dependencies included
 pnpm smoke         # talks to your real `agy` without prompting: no quota spent
+pnpm release       # publishes the version on Gitea (see AGENTS.md)
 ```
 
 | Script                        | What it runs                                            |
