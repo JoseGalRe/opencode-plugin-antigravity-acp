@@ -48,15 +48,20 @@ jobs:
             echo "Tag $GITHUB_REF_NAME does not match package.json ($version)" >&2
             exit 1
           fi
+      # setup-node's npmrc holds a placeholder token that fails anonymous reads, so the lookup leaves it out. Only a
+      # 404 means "not published"; any other failure stops the job instead of trying to publish.
       - name: Check whether npm already has this version
         id: published
         run: |
           spec="$(node -p "const p = require('./package.json'); p.name + '@' + p.version")"
-          if npm view "$spec" version >/dev/null 2>&1; then
+          if found="$(npm view --userconfig=/dev/null "$spec" version 2>"$RUNNER_TEMP/npm-view.err")" && [ -n "$found" ]; then
             echo "$spec is already on npm: nothing to publish"
             echo "exists=true" >> "$GITHUB_OUTPUT"
-          else
+          elif [ -z "$found" ] && ! [ -s "$RUNNER_TEMP/npm-view.err" ] || grep -q "E404" "$RUNNER_TEMP/npm-view.err"; then
             echo "exists=false" >> "$GITHUB_OUTPUT"
+          else
+            cat "$RUNNER_TEMP/npm-view.err" >&2
+            exit 1
           fi
       - run: pnpm install --frozen-lockfile
       - run: pnpm ready
