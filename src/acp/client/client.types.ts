@@ -27,7 +27,7 @@ import type {
  * another editor: `agy` decides what to offer from it, and that stays its call.
  */
 export const CLIENT_INFO: Implementation = {
-  name: 'opencode-plugin-antigravity-acp',
+  name: '@josegalre/opencode-plugin-antigravity-acp',
   title: 'OpenCode (Antigravity ACP)',
   version: packageJson.version,
 };

@@ -1,6 +1,6 @@
 /**
  * The plugin's options, read from its entry in `opencode.json(c)`:
- * `{ "package": "opencode-plugin-antigravity-acp", "options": { "command": "agy", "args": ["--sandbox"], "autoCompact": "80%" } }`.
+ * `{ "package": "@josegalre/opencode-plugin-antigravity-acp", "options": { "command": "agy", "args": ["--sandbox"], "autoCompact": "80%" } }`.
  */
 export type AntigravityOptions = {
   /**

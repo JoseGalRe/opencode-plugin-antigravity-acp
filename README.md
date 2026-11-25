@@ -73,7 +73,7 @@ sequenceDiagram
   them; a lint rule rejects network modules in `src/`. Sign-in, tokens, model calls and telemetry all stay inside
   `agy`, exactly as when you use it in a terminal or in Zed.
 - **No borrowed credentials.** The plugin never reads `agy`'s credential files and never calls its backend directly.
-- **Honest identity.** In `initialize` the plugin names itself (`opencode-plugin-antigravity-acp`), never another
+- **Honest identity.** In `initialize` the plugin names itself (`@josegalre/opencode-plugin-antigravity-acp`), never another
   editor, to unlock models or features.
 - **Telemetry off.** `agy` is started as `agy acp --disable-telemetry`.
 

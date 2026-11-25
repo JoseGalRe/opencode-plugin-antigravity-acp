@@ -8,7 +8,7 @@ import type { AgyRuntimeLease, PoolEntry } from './pool.types.ts';
  * process (verified with OpenCode 2.4.1), so a module-level map would hold one runtime per location. The `v1` names
  * the shape of the entries, so a later plugin version with a different runtime never picks up this one.
  */
-const POOL_KEY = Symbol.for('opencode-plugin-antigravity-acp.pool.v1');
+const POOL_KEY = Symbol.for('@josegalre/opencode-plugin-antigravity-acp.pool.v1');
 
 /**
  * The runtimes this server process shares, by how they start `agy`. OpenCode sets the plugin up once per location in

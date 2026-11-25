@@ -75,7 +75,7 @@ describe('connectAgyClient', () => {
       clientInfo: CLIENT_INFO,
     });
 
-    expect(CLIENT_INFO.name).toBe('opencode-plugin-antigravity-acp');
+    expect(CLIENT_INFO.name).toBe('@josegalre/opencode-plugin-antigravity-acp');
     expect(acp.agent.agentInfo?.name).toBe('Fake ACP Server');
 
     acp.close();
