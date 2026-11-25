@@ -32,7 +32,11 @@ client can launch Antigravity CLI" with `agy acp`, and this plugin is exactly th
 - **Interactive turns only.** `agy` answers the user's own turns. Never route OpenCode's background calls to it: titles,
   summaries, automatic compaction, subagents, scheduled or automated runs. A compaction the user asks for
   (`session.compaction.started` with reason `manual`) runs `agy`'s own `/compact`: it is the user's request, like
-  typing `/compact` in `agy`; any other compaction is answered locally (decided 2026-11-24).
+  typing `/compact` in `agy`; any other compaction is answered locally (decided 2026-11-24). A user message that
+  starts with one of `agy`'s background commands (`BACKGROUND_COMMANDS`: `/schedule`, `/goal`, `/teamwork`, `/boost`,
+  `/swarm`, `/chief-of-staff`, `/claude-handoff`) is refused before it reaches `agy`, since they run outside the turn;
+  skills and other commands run within the turn and pass. OpenCode never retries an `antigravity` turn: a retry is a turn the user did not send
+  (decided 2026-11-25).
 - **API key is different.** With `gemini-api-key` the FAQ's recommended path for third-party agents applies; these
   limits are about the subscription sign-in.
 
@@ -51,7 +55,8 @@ module gets its own folder the same way; nothing but `src/index.ts` sits directl
   (`command`, `args`, `autoCompact`).
 - `src/opencode/`: the OpenCode side. `language-model/` is the AI SDK `LanguageModelV3` whose `doStream` runs one ACP
   turn; `prompt/` turns OpenCode's prompt into ACP blocks; `turn/` turns ACP updates into stream parts; `models/`
-  reads `agy`'s catalog; `compaction/` runs `agy`'s `/compact` and pairs OpenCode's compaction hook with the event that
+  reads `agy`'s catalog; `attachments/` writes attached files `agy` must read from disk into a private temporary directory;
+  `compaction/` runs `agy`'s `/compact` and pairs OpenCode's compaction hook with the event that
   says why it runs; `permission/` maps permission requests to OpenCode's rules; `ids/` types OpenCode's branded
   IDs; `ai-sdk/` derives the AI SDK types from OpenCode's.
 - `src/agy/runtime/`: one `agy acp` process, started on first use: the catalog, one ACP session per OpenCode
@@ -246,6 +251,13 @@ Group statements into blocks separated by one blank line:
 - `agy` compacts a session on its own near a server-chosen threshold (reported around 256k tokens on 1M models);
   `AGY_CLI_AUTO_COMPACT_OVERRIDE` (`700000`, `800K`, `80%`) changes it. A leading `/compact` prompt over ACP runs the
   compaction: the turn ends `end_turn` with no text.
+- A prompt whose text starts with one of the commands `agy` announces (`available_commands_update`, right after
+  `session/new`: its own and the user's skills) runs that command. OpenCode passes `/schedule …` and the like through
+  as plain text.
+- Files in the prompt: text resources and images are read; a `resource` with a `blob` (a PDF) is ignored. A
+  `resource_link` to a `file://` path is read with `agy`'s `read` tool, also outside the workspace and without a
+  permission request.
+- Closing `agy acp` leaves no child process behind (checked with an open session and after turns).
 - Each `agy` process listens on two loopback ports of its own (one HTTPS, one HTTP) and starts the MCP servers of the
   user's Antigravity configuration as children; that is the weight of each process, not the plugin.
 
@@ -275,6 +287,10 @@ Checked against the OpenCode binary and with the built plugin in `opencode run -
   starts: wait for it in the hook. `opencode api session.compact --param sessionID=… -d '{}'` starts a manual one.
 - After a compaction, the next request starts with a user message holding the summary in
   `<conversation-checkpoint>…</conversation-checkpoint>`.
+- OpenCode retries a request whose `doStream` throws a plain `Error` (11 attempts seen). The `retry` session hook
+  decides: `event.decision = { retry: false }`.
+- OpenCode drops attachments whose kind (`pdf`, `audio`, `video`, `image`) is missing from the model's
+  `capabilities.input` ("this model does not support pdf input"); other files pass.
 - OpenCode runs `setup` once per location (project directory) in the same server process: per-instance state there
   multiplies, which is why `agy` is pooled.
 - In a test server, run OpenCode under `env -i` with temporary `XDG_*` directories: inherited `OPENCODE_CONFIG` and

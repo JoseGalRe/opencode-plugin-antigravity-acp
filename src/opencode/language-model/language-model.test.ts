@@ -49,6 +49,7 @@ function modelContext(agy: AgyRuntime, overrides: Partial<LanguageModelContext> 
     runtime: agy,
     directory: DIRECTORY,
     requestPermission: permissions(() => false),
+    stageFile: () => Promise.reject(new Error('nothing should be staged')),
     onContextWindow: () => {},
     ...overrides,
   };
@@ -202,6 +203,18 @@ describe('createLanguageModel', () => {
         headers: { [SESSION_HEADER]: 's' },
       }),
     ).rejects.toThrow('new user input');
+  });
+
+  it('refuses a prompt that starts with a background command of agy, and lets skills through', async () => {
+    const model = createLanguageModel('gemini-4-neon', modelContext(startRuntime()));
+
+    await expect(model.doStream(call('/schedule every 5m say hi', { [SESSION_HEADER]: 'ses_a' }))).rejects.toThrow(
+      '/schedule runs outside your turn',
+    );
+
+    const { stream } = await model.doStream(call('/papita do it', { [SESSION_HEADER]: 'ses_a' }));
+
+    expect(text(await collect(stream))).toContain('echo: /papita do it');
   });
 
   it('does not offer doGenerate', async () => {

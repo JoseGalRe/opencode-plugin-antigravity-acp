@@ -24,6 +24,13 @@ OpenCode ──▶ this plugin (ACP client) ──stdio, JSON-RPC──▶ agy a
   request goes through OpenCode's [permission rules](https://opencode.ai/docs/permissions/): commands as `shell`,
   edits as `edit`, reads as `read`, searches as `grep`, fetches as `webfetch`, anything else as `antigravity`. Your
   rules decide; with no matching rule OpenCode asks you.
+- **Attachments.** Text files and images go in the prompt. PDFs and other files are written to a private temporary
+  directory, removed when OpenCode closes, and `agy` reads them from there with its own `read` tool.
+- **Skills work; background commands are refused.** Your Antigravity skills and `agy`'s other slash commands
+  (`/papita`, `/plan`, `/compact`) run as usual. A message that starts with a command that runs outside your turn
+  (`/schedule`, `/goal`, `/teamwork`, `/boost`, `/swarm`, `/chief-of-staff`, `/claude-handoff`) gets an error
+  instead; write the request without the leading command.
+- **No automatic retries.** When a turn fails, OpenCode does not send it to `agy` again on its own.
 - **Titles stay local; compaction belongs to `agy`.** Titles come from your first message. `agy` keeps the
   conversation's context and compacts it on its own near its threshold. When you compact an OpenCode session
   yourself, the plugin runs `agy`'s `/compact` on its session, which spends one turn of quota; when OpenCode compacts

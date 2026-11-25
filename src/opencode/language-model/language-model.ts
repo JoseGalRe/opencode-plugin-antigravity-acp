@@ -1,5 +1,5 @@
 import { MODEL_OPTION_ID, PROVIDER_ID, THOUGHT_LEVEL_OPTION_ID } from '../models/models.types.ts';
-import { toAcpPrompt } from '../prompt/prompt.ts';
+import { backgroundCommand, toAcpPrompt } from '../prompt/prompt.ts';
 import { createTurnTranslator } from '../turn/turn.ts';
 
 import { SESSION_HEADER, VARIANT_HEADER } from './language-model.types.ts';
@@ -25,10 +25,18 @@ export function createLanguageModel(modelId: string, context: LanguageModelConte
       throw new Error(`Antigravity needs the OpenCode session; the ${SESSION_HEADER} header is missing`);
     }
 
-    const prompt = toAcpPrompt(options.prompt);
+    const prompt = await toAcpPrompt(options.prompt, context.stageFile);
 
     if (prompt.length === 0) {
       throw new Error('Antigravity runs a turn only for new user input; this request has none');
+    }
+
+    const command = backgroundCommand(prompt);
+
+    if (command) {
+      throw new Error(
+        `Antigravity's /${command} runs outside your turn, so it does not run from OpenCode. Write the request without the leading /${command}.`,
+      );
     }
 
     const session = await context.runtime.session(sessionID, context.directory, context.requestPermission);

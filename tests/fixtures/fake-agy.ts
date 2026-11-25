@@ -1,6 +1,7 @@
 // A stand-in for `agy acp`: an ACP server on stdio shaped like agy 1.5.16. `session/new` offers Gemini, Claude
 // and GPT-OSS models and the thinking levels; each turn thinks, runs one tool and answers with the prompt's text.
-// A prompt containing "permission" asks for permission first and reports the outcome. It reports the arguments it
+// A prompt containing "permission" asks for permission first and reports the outcome; a leading `/compact` compacts.
+// Right after `session/new` it announces its slash commands, as agy does. It reports the arguments it
 // was started with in `initialize`, and the options set on a session in its answer.
 import { Readable, Writable } from 'node:stream';
 
@@ -22,10 +23,25 @@ agent()
     agentInfo: { name: 'Fake ACP Server', version: '0.0.0' },
     _meta: { args: process.argv.slice(2), cwd: process.cwd() },
   }))
-  .onRequest('session/new', ({ params }) => {
+  .onRequest('session/new', ({ params, client }) => {
     sessions += 1;
 
     const sessionId = `fake-session-${sessions}`;
+
+    // Like agy, the commands come right after the session: its own and the user's skills.
+    setTimeout(() => {
+      void client.notify('session/update', {
+        sessionId,
+        update: {
+          sessionUpdate: 'available_commands_update',
+          availableCommands: [
+            { name: 'compact', description: 'Compact the conversation now.' },
+            { name: 'schedule', description: 'Run an instruction on a recurring schedule.' },
+            { name: 'code-review', description: 'Review the changes since a fixed point.' },
+          ],
+        },
+      });
+    }, 0);
 
     options.set(
       sessionId,

@@ -135,7 +135,8 @@ export function toModelInfo(model: AgyModel, thoughtLevels: readonly string[]): 
     name: model.name,
     capabilities: {
       tools: true,
-      input: ['text', 'image'],
+      // agy reads PDFs through a `resource_link` (verified with agy 1.5.16); audio and video are not tested.
+      input: ['text', 'image', 'pdf'],
       output: ['text'],
     },
     variants: thoughtLevels.map((level) => ({ id: toVariantId(level) })),

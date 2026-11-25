@@ -1,4 +1,5 @@
 import type { AgyRuntime, RequestPermission } from '../../agy/runtime/runtime.types.ts';
+import type { StageFile } from '../prompt/prompt.types.ts';
 
 /**
  * The request header that carries the OpenCode session ID to `doStream`; the `model.request` hook sets it.
@@ -28,6 +29,19 @@ export type LanguageModelContext = {
    * asks the right one.
    */
   readonly requestPermission: RequestPermission;
+  /**
+   * Writes an attached file `agy` has to read from disk (anything but text and images), and returns its path.
+   *
+   * @param file The attached file.
+   *
+   * @returns The absolute path `agy` is given a link to.
+   *
+   * @example
+   * ```ts
+   * stageFile: (file) => attachments.write(file),
+   * ```
+   */
+  readonly stageFile: StageFile;
   /**
    * Hears the context window `agy` reports in a turn's `usage_update` (`size`), on every report.
    *

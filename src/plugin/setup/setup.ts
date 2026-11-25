@@ -2,6 +2,7 @@ import { homedir } from 'node:os';
 
 import { acquireAgyRuntime } from '../../agy/pool/pool.ts';
 import { DEFAULT_AGY_ARGS } from '../../agy/process/process.ts';
+import { createAttachments } from '../../opencode/attachments/attachments.ts';
 import { compactAgySession, createCompactionReasons } from '../../opencode/compaction/compaction.ts';
 import { toProviderId } from '../../opencode/ids/ids.ts';
 import { createLanguageModel } from '../../opencode/language-model/language-model.ts';
@@ -120,6 +121,7 @@ export async function setup(context: Plugin.Context): Promise<() => Promise<void
     }
   };
 
+  const attachments = createAttachments();
   const languageModels = new Map<string, LanguageModel>();
 
   const languageModel = (modelId: string): LanguageModel => {
@@ -130,6 +132,7 @@ export async function setup(context: Plugin.Context): Promise<() => Promise<void
         runtime,
         directory: context.location.directory,
         requestPermission,
+        stageFile: attachments.write,
         onContextWindow: learnContextWindow,
       });
       languageModels.set(modelId, model);
@@ -294,10 +297,11 @@ export async function setup(context: Plugin.Context): Promise<() => Promise<void
     await context.session.hook('model.request', modelRequestCallback, HOOK_OPTIONS);
     await context.session.hook('title', titleCallback, HOOK_OPTIONS);
     await context.session.hook('compaction', compactionCallback, HOOK_OPTIONS);
+    await context.session.hook('retry', retryCallback, HOOK_OPTIONS);
   } catch (error: unknown) {
     stopWatching();
     stopEvents.abort();
-    await lease.release();
+    await Promise.all([lease.release(), attachments.dispose()]);
 
     throw error;
   }
@@ -316,8 +320,13 @@ export async function setup(context: Plugin.Context): Promise<() => Promise<void
   return async () => {
     stopWatching();
     stopEvents.abort();
-    await lease.release();
+    await Promise.all([lease.release(), attachments.dispose()]);
   };
+}
+
+function retryCallback(event: SessionHooks['retry']): void {
+  // A retry would send the turn to agy again: one the user did not ask for, after agy may have run tools already.
+  event.decision = { retry: false };
 }
 
 function toModels(catalog: AgyCatalog): readonly Model.Info[] {
