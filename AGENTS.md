@@ -107,6 +107,20 @@ Every new version ships as a Gitea release, with its notes and the plugin file r
    (`http://127.0.0.1:7531`; `GITEA_URL` overrides) with that section as its notes and `dist/index.js` attached as
    `opencode-plugin-antigravity-acp-<version>.js`. `pnpm release --dry-run` only checks and prints.
 
+**npm and GitHub.** The package is published to npm as `@josegalre/opencode-plugin-antigravity-acp` from GitHub
+(`git@github.com:JoseGalRe/opencode-plugin-antigravity-acp.git`, remote `github`), never from a laptop:
+
+1. After `pnpm release`, push `main` and the tag to GitHub: `git push github main v<version>`.
+2. `.github/workflows/publish.yml` runs on the `v*` tag: it checks that the tag is package.json's version, runs
+   `pnpm ready` and `pnpm build`, and runs `npm publish` with npm trusted publishing (OIDC, `id-token: write`): no npm
+   token is stored anywhere, and npm adds provenance. The package's trusted publisher on npmjs.com names this repository
+   and `publish.yml`, and must allow `npm publish` (newer configurations allow only `npm stage publish` by default).
+3. `.github/workflows/ci.yml` runs the same gate as the Gitea CI on GitHub. Actions are pinned to commit SHAs with the
+   version in a comment; update both together.
+
+`repository.url` in package.json must stay the GitHub repository: npm checks it against the provenance. The Gitea
+release asset leaves the npm scope out of its name (`assetName`).
+
 The attached file is the whole plugin: dropped into `~/.config/opencode/plugins/`, OpenCode loads it with the default
 options (verified with 0.1.0).
 
