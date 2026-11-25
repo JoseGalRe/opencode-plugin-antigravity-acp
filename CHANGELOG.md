@@ -1,5 +1,13 @@
 # opencode-plugin-antigravity-acp
 
+## 0.5.0
+
+### Minor Changes
+
+- The plugin goes by its npm name, `@josegalre/opencode-plugin-antigravity-acp`, everywhere: as its plugin id in
+  OpenCode, as the client name `agy` receives in `initialize`, and for the `agy` process it shares between projects. A
+  copy of the plugin under another name no longer collides with it or shares its `agy`.
+
 ## 0.4.2
 
 ### Patch Changes
