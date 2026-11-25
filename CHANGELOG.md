@@ -1,5 +1,16 @@
 # opencode-plugin-antigravity-acp
 
+## 0.2.0
+
+### Minor Changes
+
+- One `agy` process per OpenCode server instead of one per open project: projects share it, each ACP session works in
+  its own project's directory, and permission requests go to the project whose session asked.
+- `agy` no longer starts with OpenCode once the model list is saved: it starts with the first Antigravity turn, and
+  the session that turn opens refreshes the list.
+- Each model's context window comes from what `agy` reports in its turns (`usage_update`), saved with the model list,
+  instead of a fixed figure.
+
 ## 0.1.0
 
 ### Minor Changes
