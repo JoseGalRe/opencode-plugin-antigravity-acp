@@ -1,8 +1,26 @@
 {
-  "name": "opencode-plugin-antigravity-acp",
+  "name": "@josegalre/opencode-plugin-antigravity-acp",
   "version": "0.4.0",
-  "private": true,
   "description": "Google Antigravity in OpenCode through the official `agy acp` Agent Client Protocol server.",
+  "keywords": [
+    "acp",
+    "agent-client-protocol",
+    "agy",
+    "antigravity",
+    "gemini",
+    "opencode",
+    "opencode-plugin"
+  ],
+  "homepage": "https://github.com/JoseGalRe/opencode-plugin-antigravity-acp#readme",
+  "bugs": {
+    "url": "https://github.com/JoseGalRe/opencode-plugin-antigravity-acp/issues"
+  },
+  "license": "MIT",
+  "author": "Jose Adolfo Galdamez <jose@galre.dev>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JoseGalRe/opencode-plugin-antigravity-acp.git"
+  },
   "files": [
     "dist"
   ],
@@ -10,6 +28,9 @@
   "exports": {
     ".": "./dist/index.js",
     "./server": "./dist/index.js"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "prepare": "vp config --no-agent",

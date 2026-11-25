@@ -2,6 +2,10 @@
 
 Use your Google Antigravity subscription in [OpenCode](https://opencode.ai) through the official `agy acp` server.
 
+> This is an independent community project. It is not affiliated with, endorsed by or sponsored by Google.
+> Antigravity and Gemini are trademarks of Google LLC. Using it with your account is subject to Google's terms: read
+> [Terms of service](#terms-of-service) first.
+
 Antigravity CLI ships an [Agent Client Protocol](https://agentclientprotocol.com/) (ACP) server, `agy acp`, which
 editors such as Zed, JetBrains IDEs and Xcode start as a subprocess to run the Antigravity agent in their own UI. This
 plugin does the same for OpenCode: it is an ACP **client** that starts `agy acp` and speaks JSON-RPC over its stdio.
@@ -76,6 +80,15 @@ None of this is a guarantee: the decision is Google's, and the risk is yours. A 
 
 ## Install
 
+**From npm.** Add it to OpenCode's global configuration:
+
+```bash
+opencode plugin add @josegalre/opencode-plugin-antigravity-acp
+```
+
+Or list it in `plugins` in your `opencode.json(c)`, with options if you need them (see below), as
+`"package": "@josegalre/opencode-plugin-antigravity-acp"`.
+
 **From a release.** Download `opencode-plugin-antigravity-acp-<version>.js` from the repository's releases and put
 it in `~/.config/opencode/plugins/`. OpenCode loads it on its own; it runs `agy` from your `PATH` with no extra
 flags.
@@ -144,3 +157,8 @@ nor a network.
   1,048,576 tokens only until a model has run a turn; then the window `agy` reports is used.
 - **`agy` stays running once started**, until the OpenCode server closes every project. Ending it when idle needs
   sessions that survive a restart first (`session/resume`, verified to work with `agy` 1.5.16).
+
+## License
+
+[MIT](LICENSE). The published file bundles `@agentclientprotocol/sdk` (Apache-2.0) and `zod` (MIT); their licenses
+are in its header.
