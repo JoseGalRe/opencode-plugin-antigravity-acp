@@ -21,6 +21,7 @@
     "lint:fix": "vp lint --fix",
     "format:check": "vp format --check",
     "format:fix": "vp format",
+    "cspell:check": "cspell lint",
     "ready": "vp check && vp test",
     "smoke": "node scripts/smoke-agy.ts --session"
   },
@@ -28,6 +29,7 @@
     "@agentclientprotocol/sdk": "2.12.0",
     "@opencode/plugin": "2.4.1",
     "@types/node": "22.20.5",
+    "cspell": "10.5.2",
     "vite-plus": "1.8.0",
     "zod": "4.6.7"
   },
