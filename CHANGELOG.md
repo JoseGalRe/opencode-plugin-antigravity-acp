@@ -1,5 +1,12 @@
 # opencode-plugin-antigravity-acp
 
+## 0.2.1
+
+### Patch Changes
+
+- Token usage reaches OpenCode: each turn records `agy`'s input, output, reasoning and cache-read tokens, so the
+  session's context and token totals are no longer 0.
+
 ## 0.2.0
 
 ### Minor Changes
