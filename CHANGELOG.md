@@ -1,5 +1,17 @@
 # opencode-plugin-antigravity-acp
 
+## 0.4.0
+
+### Minor Changes
+
+- PDFs and other attached files now reach `agy`: they are written to a private temporary directory, removed when
+  OpenCode closes, and `agy` reads them with its own `read` tool. Before, `agy` silently ignored them.
+- A message that starts with one of `agy`'s background commands (`/schedule`, `/goal`, `/teamwork`, `/boost`,
+  `/swarm`, `/chief-of-staff`, `/claude-handoff`) is refused with a clear error, since they run outside your turn.
+  Your skills and the other slash commands keep working.
+- OpenCode no longer retries a failed Antigravity turn on its own; it used to send the same turn to `agy` up to 11
+  times.
+
 ## 0.3.0
 
 ### Minor Changes
