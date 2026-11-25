@@ -13,7 +13,7 @@ export const DEFAULT_AGY_ARGS = ['acp', '--disable-telemetry'] as const;
 export function spawnAgy(options: AgyProcessOptions): AgyProcess {
   const child = spawn(options.command, [...options.args], {
     cwd: options.cwd,
-    env: options.env ?? process.env,
+    env: { ...process.env, ...options.extraEnv },
     stdio: ['pipe', 'pipe', 'pipe'],
   });
 

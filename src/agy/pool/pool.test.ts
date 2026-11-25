@@ -14,10 +14,16 @@ describe('acquireAgyRuntime', () => {
     const second = acquireAgyRuntime(options('agy-shared'));
     const other = acquireAgyRuntime(options('agy-other'));
 
+    const tuned = acquireAgyRuntime({
+      ...options('agy-shared'),
+      process: { ...options('agy-shared').process, extraEnv: { AGY_CLI_AUTO_COMPACT_OVERRIDE: '80%' } },
+    });
+
     expect(second.runtime).toBe(first.runtime);
     expect(other.runtime).not.toBe(first.runtime);
+    expect(tuned.runtime).not.toBe(first.runtime);
 
-    await Promise.all([first.release(), second.release(), other.release()]);
+    await Promise.all([first.release(), second.release(), other.release(), tuned.release()]);
   });
 
   it('shares the runtime with another import of the module, as OpenCode imports the plugin once per location', async () => {

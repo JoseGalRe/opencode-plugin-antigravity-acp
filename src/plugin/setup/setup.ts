@@ -2,6 +2,7 @@ import { homedir } from 'node:os';
 
 import { acquireAgyRuntime } from '../../agy/pool/pool.ts';
 import { DEFAULT_AGY_ARGS } from '../../agy/process/process.ts';
+import { compactAgySession, createCompactionReasons } from '../../opencode/compaction/compaction.ts';
 import { toProviderId } from '../../opencode/ids/ids.ts';
 import { createLanguageModel } from '../../opencode/language-model/language-model.ts';
 import { SESSION_HEADER, VARIANT_HEADER } from '../../opencode/language-model/language-model.types.ts';
@@ -25,10 +26,26 @@ import type { SessionHooks } from '@opencode/plugin/promise/session';
 const PROVIDER_PACKAGE = 'aisdk:opencode-plugin-antigravity-acp';
 
 /**
- * The compaction recorded instead of a summary: `agy` keeps the conversation's context itself, and summarizing it
- * with `agy` would be a non-interactive call.
+ * The compaction recorded when OpenCode compacts on its own: `agy` keeps the conversation's context in its session
+ * and compacts it itself near its threshold, so nothing runs in `agy`.
  */
-const COMPACTION_SUMMARY = 'Antigravity keeps the context of this conversation in its own session.';
+const COMPACTION_SUMMARY = 'Antigravity keeps the context of this conversation in its own session and compacts it itself.';
+
+/**
+ * The compaction recorded once `agy` compacted its session on the user's request.
+ */
+const AGY_COMPACTION_SUMMARY = 'Antigravity compacted this conversation in its own session.';
+
+/**
+ * How long the compaction hook waits for the event that says why it runs, in milliseconds. The event arrives within
+ * milliseconds; without it the compaction stays local.
+ */
+const COMPACTION_REASON_TIMEOUT = 2_000;
+
+/**
+ * The variable that sets `agy`'s auto-compaction threshold (agy 1.5.16).
+ */
+const AUTO_COMPACT_ENV = 'AGY_CLI_AUTO_COMPACT_OVERRIDE';
 
 /**
  * The longest title taken from the first user message, in characters.
@@ -47,6 +64,11 @@ const CATALOG_KEY = 'catalog';
  * in milliseconds. The read carries on in the background and registers them when it ends.
  */
 const FIRST_DISCOVERY_TIMEOUT = 20_000;
+
+/**
+ * The events that tell a manual compaction from one OpenCode starts on its own, and when it is over.
+ */
+const COMPACTION_EVENTS = ['session.compaction.started', 'session.compaction.ended', 'session.compaction.failed'] as const;
 
 /**
  * Scopes every hook to the `antigravity` provider: other providers' requests never reach them.
@@ -72,6 +94,7 @@ export async function setup(context: Plugin.Context): Promise<() => Promise<void
       command: options.command,
       args: [...DEFAULT_AGY_ARGS, ...options.args],
       cwd: homedir(),
+      ...(options.autoCompact === undefined ? {} : { extraEnv: { [AUTO_COMPACT_ENV]: options.autoCompact } }),
     },
     log,
   });
@@ -119,6 +142,8 @@ export async function setup(context: Plugin.Context): Promise<() => Promise<void
 
   let catalog = saved;
   let models: readonly Model.Info[] = saved ? toModels(saved) : [];
+
+  const compactionReasons = createCompactionReasons();
 
   // OpenCode sends `default` when no variant is chosen: only `agy`'s own levels are passed on.
   let thoughtLevels = new Set(saved?.thoughtLevels);
@@ -206,8 +231,50 @@ export async function setup(context: Plugin.Context): Promise<() => Promise<void
     event.result = titleFrom(messages);
   }
 
+  async function compactionCallback(event: SessionHooks['compaction']): Promise<void> {
+    // Only a compaction the user asked for runs in `agy`: one OpenCode starts on its own, or one whose reason never
+    // arrives, is answered here.
+    const reason = await compactionReasons.reasonFor(event.sessionID, COMPACTION_REASON_TIMEOUT);
+    const session = reason === 'manual' ? runtime.existing(event.sessionID) : undefined;
+
+    if (!session) {
+      event.result = { summary: COMPACTION_SUMMARY };
+
+      return;
+    }
+
+    const compaction = await compactAgySession(await session);
+
+    event.result = {
+      summary: compaction.text.length > 0 ? `${AGY_COMPACTION_SUMMARY}\n\n${compaction.text}` : AGY_COMPACTION_SUMMARY,
+      metadata: { antigravity: { compacted: true, contextTokens: compaction.contextTokens } },
+    };
+  }
+
+  // OpenCode publishes why a compaction starts right before it runs the hook; the event reaches plugins just after.
+  const watchCompactions = async () => {
+    try {
+      const events = context.event.subscribe({ types: [...COMPACTION_EVENTS], signal: stopEvents.signal });
+
+      for await (const event of events) {
+        if (event.type === 'session.compaction.started') {
+          compactionReasons.started(event.data.sessionID, event.data.reason);
+        } else {
+          compactionReasons.finished(event.data.sessionID);
+        }
+      }
+    } catch (error: unknown) {
+      if (!stopEvents.signal.aborted) {
+        log('stopped following compactions; every compaction stays local', error);
+      }
+    }
+  };
+
   // Every session `agy` opens sends the catalog again: a saved one is refreshed by the first real turn.
   const stopWatching = runtime.watchCatalog(learnCatalog);
+  const stopEvents = new AbortController();
+
+  void watchCompactions();
 
   try {
     await context.provider.transform((editor) => {
@@ -229,6 +296,7 @@ export async function setup(context: Plugin.Context): Promise<() => Promise<void
     await context.session.hook('compaction', compactionCallback, HOOK_OPTIONS);
   } catch (error: unknown) {
     stopWatching();
+    stopEvents.abort();
     await lease.release();
 
     throw error;
@@ -247,12 +315,9 @@ export async function setup(context: Plugin.Context): Promise<() => Promise<void
 
   return async () => {
     stopWatching();
+    stopEvents.abort();
     await lease.release();
   };
-}
-
-function compactionCallback(event: SessionHooks['compaction']): void {
-  event.result = { summary: COMPACTION_SUMMARY };
 }
 
 function toModels(catalog: AgyCatalog): readonly Model.Info[] {

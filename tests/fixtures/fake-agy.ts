@@ -81,6 +81,14 @@ agent()
 
     const update = (value: SessionUpdate) => client.notify('session/update', { sessionId, update: value });
 
+    // `agy`'s own command: the session shrinks to a checkpoint summary.
+    if (text.trimStart().startsWith('/compact')) {
+      await update({ sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'Conversation compacted.' } });
+      await update({ sessionUpdate: 'usage_update', used: 321, size: 1_048_576 });
+
+      return { stopReason: 'end_turn' };
+    }
+
     await update({ sessionUpdate: 'agent_thought_chunk', content: { type: 'text', text: 'Thinking.' } });
 
     if (text.includes('permission')) {

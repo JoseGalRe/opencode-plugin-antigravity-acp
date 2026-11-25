@@ -24,8 +24,11 @@ OpenCode ──▶ this plugin (ACP client) ──stdio, JSON-RPC──▶ agy a
   request goes through OpenCode's [permission rules](https://opencode.ai/docs/permissions/): commands as `shell`,
   edits as `edit`, reads as `read`, searches as `grep`, fetches as `webfetch`, anything else as `antigravity`. Your
   rules decide; with no matching rule OpenCode asks you.
-- **Titles and compaction stay local.** Titles come from your first message; compaction records a note instead of
-  asking `agy` to summarize, since `agy` keeps its own context.
+- **Titles stay local; compaction belongs to `agy`.** Titles come from your first message. `agy` keeps the
+  conversation's context and compacts it on its own near its threshold. When you compact an OpenCode session
+  yourself, the plugin runs `agy`'s `/compact` on its session, which spends one turn of quota; when OpenCode compacts
+  on its own, the plugin records a note and leaves the context to `agy`. The summary OpenCode replays after a
+  compaction is not sent to `agy`.
 
 - **Only `agy` talks to Google.** The plugin has no Google or Antigravity URL and never makes a network request to
   them; a lint rule rejects network modules in `src/`. Sign-in, tokens, model calls and telemetry all stay inside
@@ -49,8 +52,8 @@ in that same thread has no answer from Google yet. The plugin keeps to that desc
 
 - `agy` runs its own tools; OpenCode shows them and answers its permission requests.
 - Only Gemini models are offered with a subscription sign-in, although `agy` lists Claude and GPT-OSS too.
-- Only your own interactive turns go to `agy`: titles and compaction never reach it, and subagents and background
-  generation with an `antigravity` model are refused. Scheduled or automated runs cannot be told apart from yours:
+- Only your own interactive turns go to `agy`: titles and automatic compaction never reach it (a compaction you ask
+  for runs `agy`'s `/compact`), and subagents and background generation with an `antigravity` model are refused. Scheduled or automated runs cannot be told apart from yours:
   do not point them at an `antigravity` model.
 
 None of this is a guarantee: the decision is Google's, and the risk is yours. A Gemini API key
@@ -85,6 +88,7 @@ pnpm install && pnpm build
       "options": {
         "command": "agy", // the Antigravity CLI; an absolute path also works
         "args": [], // extra `agy acp` flags, such as "--sandbox"
+        "autoCompact": "80%", // optional: when agy compacts on its own (700000, 800K, 0.5M or 80%)
       },
     },
   ],

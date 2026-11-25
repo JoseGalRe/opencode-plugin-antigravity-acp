@@ -30,7 +30,9 @@ client can launch Antigravity CLI" with `agy acp`, and this plugin is exactly th
 - **Gemini models only** when signed in with `oauth-personal`. `agy` 1.5.16 offers this client Claude and GPT-OSS
   too, but Google's reply reserves them for first-party surfaces: filter them out.
 - **Interactive turns only.** `agy` answers the user's own turns. Never route OpenCode's background calls to it: titles,
-  summaries, compaction, subagents, scheduled or automated runs.
+  summaries, automatic compaction, subagents, scheduled or automated runs. A compaction the user asks for
+  (`session.compaction.started` with reason `manual`) runs `agy`'s own `/compact`: it is the user's request, like
+  typing `/compact` in `agy`; any other compaction is answered locally (decided 2026-11-24).
 - **API key is different.** With `gemini-api-key` the FAQ's recommended path for third-party agents applies; these
   limits are about the subscription sign-in.
 
@@ -46,10 +48,11 @@ module gets its own folder the same way; nothing but `src/index.ts` sits directl
   it exports nothing else.
 - `src/plugin/setup/`: registers the `antigravity` provider, supplies its language models through the `aisdk` hooks,
   and adds the session hooks that keep `agy` to interactive turns. `src/plugin/options/` reads the plugin options
-  (`command`, `args`).
+  (`command`, `args`, `autoCompact`).
 - `src/opencode/`: the OpenCode side. `language-model/` is the AI SDK `LanguageModelV3` whose `doStream` runs one ACP
   turn; `prompt/` turns OpenCode's prompt into ACP blocks; `turn/` turns ACP updates into stream parts; `models/`
-  reads `agy`'s catalog; `permission/` maps permission requests to OpenCode's rules; `ids/` types OpenCode's branded
+  reads `agy`'s catalog; `compaction/` runs `agy`'s `/compact` and pairs OpenCode's compaction hook with the event that
+  says why it runs; `permission/` maps permission requests to OpenCode's rules; `ids/` types OpenCode's branded
   IDs; `ai-sdk/` derives the AI SDK types from OpenCode's.
 - `src/agy/runtime/`: one `agy acp` process, started on first use: the catalog, one ACP session per OpenCode
   session, update routing, and each session's permission handler (the location that opened it).
@@ -146,7 +149,9 @@ const CANCELLED: RequestPermissionResponse = {
   domain's hook map: `AISDKHooks['sdk']` from `@opencode/plugin/promise/aisdk`, `SessionHooks['model.request']` from
   `@opencode/plugin/promise/session`, and so on. No `unknown` and no inline arrow in the `hook(...)` call.
 - A callback that uses setup state is declared inside `setup`, before the registrations; one that uses nothing sits at
-  module level (`compactionCallback`).
+  module level.
+- A callback passed to a function (`session.prompt`, `subscribe`) is a named function declared before the call, and
+  the call passes its reference: `session.prompt(blocks, onUpdate, signal)`, not an inline arrow.
 - The registrations are one line each, sharing `HOOK_OPTIONS` (`{ providerID: PROVIDER_ID }`).
 
 ```ts
@@ -238,6 +243,9 @@ Group statements into blocks separated by one blank line:
   turn's last `usage_update.used`. The `usage_update` arrives before the response. Resuming a session sends none.
 - Sessions persist on disk: a new `agy` process lists them (`session/list` by `cwd`) and reopens them with
   `session/resume`.
+- `agy` compacts a session on its own near a server-chosen threshold (reported around 256k tokens on 1M models);
+  `AGY_CLI_AUTO_COMPACT_OVERRIDE` (`700000`, `800K`, `80%`) changes it. A leading `/compact` prompt over ACP runs the
+  compaction: the turn ends `end_turn` with no text.
 - Each `agy` process listens on two loopback ports of its own (one HTTPS, one HTTP) and starts the MCP servers of the
   user's Antigravity configuration as children; that is the weight of each process, not the plugin.
 
@@ -262,6 +270,11 @@ Checked against the OpenCode binary and with the built plugin in `opencode run -
   rule rejects `ctx.permission.assert` even under `opencode run --auto`.
 - Models registered after setup (`ctx.provider.reload()`) may come too late for a request made right at start:
   setup waits for the first discovery when no catalog is saved. With a saved catalog setup starts nothing.
+- The `compaction` hook does not say why it runs. `session.compaction.started` (`reason` `manual` or `auto`) is
+  published just before the hook, but reaches a plugin's `ctx.event.subscribe` a few milliseconds after the hook
+  starts: wait for it in the hook. `opencode api session.compact --param sessionID=… -d '{}'` starts a manual one.
+- After a compaction, the next request starts with a user message holding the summary in
+  `<conversation-checkpoint>…</conversation-checkpoint>`.
 - OpenCode runs `setup` once per location (project directory) in the same server process: per-instance state there
   multiplies, which is why `agy` is pooled.
 - In a test server, run OpenCode under `env -i` with temporary `XDG_*` directories: inherited `OPENCODE_CONFIG` and

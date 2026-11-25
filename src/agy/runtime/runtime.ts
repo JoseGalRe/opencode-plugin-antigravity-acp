@@ -193,6 +193,7 @@ export function createAgyRuntime(options: AgyRuntimeOptions): AgyRuntime {
 
       return session;
     },
+    existing: (sessionID) => sessions.get(sessionID),
     forget: async (sessionID) => {
       const session = sessions.get(sessionID);
 

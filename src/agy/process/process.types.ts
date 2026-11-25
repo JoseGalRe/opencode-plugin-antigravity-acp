@@ -17,9 +17,10 @@ export type AgyProcessOptions = {
    */
   readonly cwd: string;
   /**
-   * The environment of the process; `process.env` when omitted.
+   * Variables added to this process's environment for `agy`, such as `AGY_CLI_AUTO_COMPACT_OVERRIDE`; they win over
+   * inherited ones. None when omitted.
    */
-  readonly env?: NodeJS.ProcessEnv;
+  readonly extraEnv?: Readonly<Record<string, string>>;
   /**
    * Receives the server's stderr as UTF-8 text, in chunks as they arrive. `agy` writes its own diagnostics there;
    * stdout is reserved for ACP.

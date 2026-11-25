@@ -155,6 +155,24 @@ export type AgyRuntime = {
    */
   readonly session: (sessionID: string, cwd: string, requestPermission: RequestPermission) => Promise<AgySession>;
   /**
+   * The ACP session of an OpenCode session, only when one was already opened in the current `agy` process. Unlike
+   * `session`, it never opens one: for work that only makes sense on the existing conversation, such as compaction.
+   *
+   * @param sessionID The OpenCode session ID.
+   *
+   * @returns The ACP session, or `undefined` when the OpenCode session has none.
+   *
+   * @example
+   * ```ts
+   * const session = runtime.existing(event.sessionID);
+   *
+   * if (session) {
+   *   await compactAgySession(await session);
+   * }
+   * ```
+   */
+  readonly existing: (sessionID: string) => Promise<AgySession> | undefined;
+  /**
    * Closes the ACP session of an OpenCode session, if it has one. Safe to call for unknown sessions.
    *
    * @param sessionID The OpenCode session ID.

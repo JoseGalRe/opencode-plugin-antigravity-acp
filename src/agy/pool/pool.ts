@@ -27,14 +27,16 @@ function sharedPool(): Map<string, PoolEntry> {
 
 /**
  * Takes a lease on the runtime that starts `agy` the way `options` says, creating it on first use. Plugin instances
- * with the same `command`, `args` and working directory share one runtime and so one `agy` process.
+ * with the same `command`, `args`, working directory and `extraEnv` share one runtime and so one `agy` process.
  *
- * @param options How to start `agy acp`; the first caller's `log` and `env` are kept for the shared runtime.
+ * @param options How to start `agy acp`; the first caller's `log` is kept for the shared runtime.
  *
  * @returns The lease: the runtime and the function that gives it back.
  */
 export function acquireAgyRuntime(options: AgyRuntimeOptions): AgyRuntimeLease {
-  const key = JSON.stringify([options.process.command, options.process.args, options.process.cwd]);
+  const { command, args, cwd, extraEnv = {} } = options.process;
+
+  const key = JSON.stringify([command, args, cwd, Object.entries(extraEnv).toSorted(([a], [b]) => a.localeCompare(b))]);
 
   let entry = POOL.get(key);
 
