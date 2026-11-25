@@ -1,13 +1,16 @@
+import { homedir } from 'node:os';
+
+import { acquireAgyRuntime } from '../../agy/pool/pool.ts';
 import { DEFAULT_AGY_ARGS } from '../../agy/process/process.ts';
-import { createAgyRuntime } from '../../agy/runtime/runtime.ts';
 import { toProviderId } from '../../opencode/ids/ids.ts';
 import { createLanguageModel } from '../../opencode/language-model/language-model.ts';
 import { SESSION_HEADER, VARIANT_HEADER } from '../../opencode/language-model/language-model.types.ts';
-import { parseCatalog, toModelInfo } from '../../opencode/models/models.ts';
+import { keepContextWindows, parseCatalog, toModelInfo, withContextWindow } from '../../opencode/models/models.ts';
 import { PROVIDER_ID } from '../../opencode/models/models.types.ts';
 import { answerPermission, permissionCheckFor } from '../../opencode/permission/permission.ts';
 import { readOptions } from '../options/options.ts';
 
+import type { RequestPermission } from '../../agy/runtime/runtime.types.ts';
 import type { LanguageModel } from '../../opencode/ai-sdk/ai-sdk.types.ts';
 import type { AgyCatalog } from '../../opencode/models/models.types.ts';
 import type { Model, Plugin } from '@opencode/plugin';
@@ -59,37 +62,41 @@ type SessionMessages = Awaited<ReturnType<Plugin.Context['session']['context']>>
  *
  * @param context The plugin context OpenCode passes.
  *
- * @returns The cleanup that ends the `agy` process.
+ * @returns The cleanup that releases this location's share of `agy`; the last location to release it ends the process.
  */
 export async function setup(context: Plugin.Context): Promise<() => Promise<void>> {
   const options = readOptions(context.options);
 
-  const runtime = createAgyRuntime({
+  // Every location of this OpenCode server shares one `agy`: its sessions name their own directories.
+  const lease = acquireAgyRuntime({
     process: {
       command: options.command,
       args: [...DEFAULT_AGY_ARGS, ...options.args],
-      cwd: context.location.directory,
-    },
-    requestPermission: async (request, sessionID) => {
-      const check = permissionCheckFor(request);
-
-      try {
-        await context.permission.assert({
-          sessionID,
-          action: check.action,
-          resources: [...check.resources],
-          metadata: { ...check.metadata },
-        });
-
-        return answerPermission(request.options, true);
-      } catch (error: unknown) {
-        log(`${check.action} refused`, error);
-
-        return answerPermission(request.options, false);
-      }
+      cwd: homedir(),
     },
     log,
   });
+
+  const { runtime } = lease;
+
+  const requestPermission: RequestPermission = async (request, sessionID) => {
+    const check = permissionCheckFor(request);
+
+    try {
+      await context.permission.assert({
+        sessionID,
+        action: check.action,
+        resources: [...check.resources],
+        metadata: { ...check.metadata },
+      });
+
+      return answerPermission(request.options, true);
+    } catch (error: unknown) {
+      log(`${check.action} refused`, error);
+
+      return answerPermission(request.options, false);
+    }
+  };
 
   const languageModels = new Map<string, LanguageModel>();
 
@@ -97,7 +104,12 @@ export async function setup(context: Plugin.Context): Promise<() => Promise<void
     let model = languageModels.get(modelId);
 
     if (!model) {
-      model = createLanguageModel(modelId, { runtime, directory: context.location.directory });
+      model = createLanguageModel(modelId, {
+        runtime,
+        directory: context.location.directory,
+        requestPermission,
+        onContextWindow: learnContextWindow,
+      });
       languageModels.set(modelId, model);
     }
 
@@ -106,10 +118,55 @@ export async function setup(context: Plugin.Context): Promise<() => Promise<void
 
   const saved = parseCatalog(await context.storage.get(CATALOG_KEY).catch(() => undefined));
 
+  let catalog = saved;
   let models: readonly Model.Info[] = saved ? toModels(saved) : [];
 
   // OpenCode sends `default` when no variant is chosen: only `agy`'s own levels are passed on.
   let thoughtLevels = new Set(saved?.thoughtLevels);
+
+  // Catalog changes apply one at a time, so a slower reload or save never overwrites a newer one.
+  let applying = Promise.resolve();
+
+  function apply(next: AgyCatalog): Promise<void> {
+    const changed = JSON.stringify(next) !== JSON.stringify(catalog);
+
+    catalog = next;
+
+    if (!changed) {
+      return applying;
+    }
+
+    const write = async () => {
+      models = toModels(next);
+      thoughtLevels = new Set(next.thoughtLevels);
+
+      try {
+        await context.provider.reload();
+        await context.storage.set(CATALOG_KEY, {
+          models: next.models.map((model) => ({ ...model })),
+          thoughtLevels: [...next.thoughtLevels],
+        });
+      } catch (error: unknown) {
+        log('could not register the models agy offers', error);
+      }
+    };
+
+    applying = applying.then(write);
+
+    return applying;
+  }
+
+  function learnCatalog(next: AgyCatalog): void {
+    void apply(keepContextWindows(next, catalog));
+  }
+
+  function learnContextWindow(modelId: string, contextWindow: number): void {
+    const next = catalog && withContextWindow(catalog, modelId, contextWindow);
+
+    if (next) {
+      void apply(next);
+    }
+  }
 
   function sdkCallback(input: AISDKHooks['sdk']): void {
     input.sdk = { languageModel };
@@ -150,6 +207,9 @@ export async function setup(context: Plugin.Context): Promise<() => Promise<void
     event.result = titleFrom(messages);
   }
 
+  // Every session `agy` opens sends the catalog again: a saved one is refreshed by the first real turn.
+  const stopWatching = runtime.watchCatalog(learnCatalog);
+
   try {
     await context.provider.transform((editor) => {
       editor.add({
@@ -169,37 +229,27 @@ export async function setup(context: Plugin.Context): Promise<() => Promise<void
     await context.session.hook('title', titleCallback, HOOK_OPTIONS);
     await context.session.hook('compaction', compactionCallback, HOOK_OPTIONS);
   } catch (error: unknown) {
-    await runtime.dispose();
+    stopWatching();
+    await lease.release();
 
     throw error;
   }
 
-  const discover = async () => {
-    try {
-      const catalog = await runtime.catalog();
-
-      models = toModels(catalog);
-      thoughtLevels = new Set(catalog.thoughtLevels);
-
-      await context.provider.reload();
-
-      await context.storage.set(CATALOG_KEY, {
-        models: catalog.models.map(({ id, name }) => ({ id, name })),
-        thoughtLevels: [...catalog.thoughtLevels],
-      });
-    } catch (error: unknown) {
-      log('could not read the models agy offers', error);
-    }
-  };
-
-  const discovery = discover();
-
   if (!saved) {
-    // With nothing saved, a request made right after start would find no model: wait, within reason.
+    // Nothing saved: `agy` must start now to list its models. A request made right after start would find no model,
+    // so wait, within reason; the read carries on in the background and registers them when it ends.
+    const discovery = runtime
+      .catalog()
+      .then((read) => apply(keepContextWindows(read, catalog)))
+      .catch((error: unknown) => log('could not read the models agy offers', error));
+
     await Promise.race([discovery, delay(FIRST_DISCOVERY_TIMEOUT)]);
   }
 
-  return () => runtime.dispose();
+  return async () => {
+    stopWatching();
+    await lease.release();
+  };
 }
 
 function compactionCallback(event: SessionHooks['compaction']): void {

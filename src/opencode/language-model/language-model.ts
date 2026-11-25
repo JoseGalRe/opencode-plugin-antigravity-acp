@@ -6,6 +6,7 @@ import { SESSION_HEADER, VARIANT_HEADER } from './language-model.types.ts';
 
 import type { CallOptions, LanguageModel, StreamPart, StreamResult } from '../ai-sdk/ai-sdk.types.ts';
 import type { LanguageModelContext } from './language-model.types.ts';
+import type { SessionUpdate } from '@agentclientprotocol/sdk';
 
 /**
  * Creates the AI SDK language model OpenCode streams one `agy` model through. Each `doStream` call is one turn of the
@@ -30,7 +31,7 @@ export function createLanguageModel(modelId: string, context: LanguageModelConte
       throw new Error('Antigravity runs a turn only for new user input; this request has none');
     }
 
-    const session = await context.runtime.session(sessionID, context.directory);
+    const session = await context.runtime.session(sessionID, context.directory, context.requestPermission);
 
     await session.configure(MODEL_OPTION_ID, modelId);
 
@@ -64,7 +65,15 @@ export function createLanguageModel(modelId: string, context: LanguageModelConte
           emit([{ type: 'stream-start', warnings: [] }]);
 
           try {
-            const response = await session.prompt(prompt, (update) => emit(translator.update(update)), turn.signal);
+            const onUpdate = (update: SessionUpdate) => {
+              if (update.sessionUpdate === 'usage_update' && update.size > 0) {
+                context.onContextWindow(modelId, update.size);
+              }
+
+              emit(translator.update(update));
+            };
+
+            const response = await session.prompt(prompt, onUpdate, turn.signal);
 
             emit(translator.finish(response));
           } catch (error: unknown) {

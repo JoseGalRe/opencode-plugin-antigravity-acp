@@ -1,4 +1,4 @@
-import type { AgyRuntime } from '../../agy/runtime/runtime.types.ts';
+import type { AgyRuntime, RequestPermission } from '../../agy/runtime/runtime.types.ts';
 
 /**
  * The request header that carries the OpenCode session ID to `doStream`; the `model.request` hook sets it.
@@ -23,4 +23,21 @@ export type LanguageModelContext = {
    * The absolute directory new ACP sessions work in: the plugin's OpenCode location.
    */
   readonly directory: string;
+  /**
+   * Decides the permission requests of the sessions this location opens, so a runtime shared by several locations
+   * asks the right one.
+   */
+  readonly requestPermission: RequestPermission;
+  /**
+   * Hears the context window `agy` reports in a turn's `usage_update` (`size`), on every report.
+   *
+   * @param modelId The `agy` model that ran the turn (`gemini-4-neon`).
+   * @param contextWindow The window in tokens (`1048576`).
+   *
+   * @example
+   * ```ts
+   * onContextWindow: (modelId, contextWindow) => learnContextWindow(modelId, contextWindow),
+   * ```
+   */
+  readonly onContextWindow: (modelId: string, contextWindow: number) => void;
 };

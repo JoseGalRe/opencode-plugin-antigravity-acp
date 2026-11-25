@@ -51,8 +51,10 @@ module gets its own folder the same way; nothing but `src/index.ts` sits directl
   turn; `prompt/` turns OpenCode's prompt into ACP blocks; `turn/` turns ACP updates into stream parts; `models/`
   reads `agy`'s catalog; `permission/` maps permission requests to OpenCode's rules; `ids/` types OpenCode's branded
   IDs; `ai-sdk/` derives the AI SDK types from OpenCode's.
-- `src/agy/runtime/`: one `agy acp` process per plugin instance, started on first use: the catalog, one ACP session
-  per OpenCode session, update routing and permission ownership.
+- `src/agy/runtime/`: one `agy acp` process, started on first use: the catalog, one ACP session per OpenCode
+  session, update routing, and each session's permission handler (the location that opened it).
+- `src/agy/pool/`: shares one runtime among the plugin instances of an OpenCode server (one per location) through
+  explicit leases; the last release ends `agy`.
 - `src/agy/process/`: starts `agy acp` and wraps its stdio as an ACP stream.
 - `src/acp/client/`: the ACP client on the official SDK (`@agentclientprotocol/sdk`): `initialize`, sessions, config
   options, turns with cancellation, permission requests and file access.
@@ -227,6 +229,12 @@ Group statements into blocks separated by one blank line:
 - `session/new` returns config options `model` (Gemini, Claude and GPT-OSS models are offered to this client; only
   Gemini is used with `oauth-personal`, see Terms of service),
   `thought_level` (`low`, `medium`, `high`, `xhigh`) and `mode` (`default`, `accept-edits`, `auto`, `plan`).
+- `session/new` also returns the plan in `_meta.antigravity.tier` (`{ name, id, upgradeUri }`), and each session sends
+  `usage_update` with `used` and the context window `size` (1,048,576). Nothing in ACP reports remaining quota.
+- Sessions persist on disk: a new `agy` process lists them (`session/list` by `cwd`) and reopens them with
+  `session/resume`.
+- Each `agy` process listens on two loopback ports of its own (one HTTPS, one HTTP) and starts the MCP servers of the
+  user's Antigravity configuration as children; that is the weight of each process, not the plugin.
 
 ## Verified facts about OpenCode (2.4.1, 2026-11-24)
 
@@ -246,6 +254,8 @@ Checked against the OpenCode binary and with the built plugin in `opencode run -
 - Permission actions are V2 names: commands are `shell` (V1's `bash`). A rule with no match means `ask`; a `deny`
   rule rejects `ctx.permission.assert` even under `opencode run --auto`.
 - Models registered after setup (`ctx.provider.reload()`) may come too late for a request made right at start:
-  setup waits for the first discovery when no catalog is saved.
+  setup waits for the first discovery when no catalog is saved. With a saved catalog setup starts nothing.
+- OpenCode runs `setup` once per location (project directory) in the same server process: per-instance state there
+  multiplies, which is why `agy` is pooled.
 - In a test server, run OpenCode under `env -i` with temporary `XDG_*` directories: inherited `OPENCODE_CONFIG` and
   `OPENCODE_CLIENT` otherwise load the parent instance's configuration and plugins.

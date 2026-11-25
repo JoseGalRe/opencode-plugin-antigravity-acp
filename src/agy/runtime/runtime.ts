@@ -5,7 +5,7 @@ import { spawnAgy } from '../process/process.ts';
 import type { AgyClient } from '../../acp/client/client.types.ts';
 import type { AgyCatalog } from '../../opencode/models/models.types.ts';
 import type { AgyProcess } from '../process/process.types.ts';
-import type { AgyRuntime, AgyRuntimeOptions, AgySession } from './runtime.types.ts';
+import type { AgyRuntime, AgyRuntimeOptions, AgySession, RequestPermission } from './runtime.types.ts';
 import type { SessionConfigOption, SessionUpdate } from '@agentclientprotocol/sdk';
 
 type Connection = {
@@ -13,18 +13,24 @@ type Connection = {
   readonly client: AgyClient;
 };
 
+type Owner = {
+  readonly sessionID: string;
+  readonly requestPermission: RequestPermission;
+};
+
 /**
  * Creates the runtime. Nothing starts until the first call that needs `agy`.
  *
- * @param options How to start `agy acp` and how to answer its permission requests.
+ * @param options How to start `agy acp` and where its diagnostics go.
  *
  * @returns The runtime.
  */
 export function createAgyRuntime(options: AgyRuntimeOptions): AgyRuntime {
-  // Turn listeners by ACP session ID, and the OpenCode session each ACP session belongs to.
+  // Turn listeners by ACP session ID, and the OpenCode session (with its permission handler) each belongs to.
   const listeners = new Map<string, (update: SessionUpdate) => void>();
-  const owners = new Map<string, string>();
+  const owners = new Map<string, Owner>();
   const sessions = new Map<string, Promise<AgySession>>();
+  const catalogListeners = new Set<(catalog: AgyCatalog) => void>();
 
   let connection: Promise<Connection> | undefined;
   let catalog: Promise<AgyCatalog> | undefined;
@@ -37,6 +43,18 @@ export function createAgyRuntime(options: AgyRuntimeOptions): AgyRuntime {
     listeners.clear();
     owners.clear();
     sessions.clear();
+  }
+
+  function announce(configOptions: readonly SessionConfigOption[] | null | undefined): AgyCatalog {
+    const read = readCatalog(configOptions);
+
+    if (read.models.length > 0) {
+      for (const listener of catalogListeners) {
+        listener(read);
+      }
+    }
+
+    return read;
   }
 
   async function start(): Promise<Connection> {
@@ -70,7 +88,7 @@ export function createAgyRuntime(options: AgyRuntimeOptions): AgyRuntime {
           const owner = owners.get(request.sessionId);
 
           return owner
-            ? options.requestPermission(request, owner, signal)
+            ? owner.requestPermission(request, owner.sessionID, signal)
             : Promise.resolve({ outcome: { outcome: 'cancelled' } });
         },
       });
@@ -128,11 +146,12 @@ export function createAgyRuntime(options: AgyRuntimeOptions): AgyRuntime {
     return session;
   }
 
-  async function open(sessionID: string, cwd: string): Promise<AgySession> {
+  async function open(sessionID: string, cwd: string, requestPermission: RequestPermission): Promise<AgySession> {
     const { client } = await connect();
     const created = await client.newSession({ cwd, mcpServers: [] });
 
-    owners.set(created.sessionId, sessionID);
+    owners.set(created.sessionId, { sessionID, requestPermission });
+    announce(created.configOptions);
 
     return bind(client, created.sessionId, created.configOptions);
   }
@@ -143,7 +162,7 @@ export function createAgyRuntime(options: AgyRuntimeOptions): AgyRuntime {
 
     await client.closeSession({ sessionId: created.sessionId });
 
-    return readCatalog(created.configOptions);
+    return announce(created.configOptions);
   }
 
   return {
@@ -156,11 +175,18 @@ export function createAgyRuntime(options: AgyRuntimeOptions): AgyRuntime {
 
       return catalog;
     },
-    session: (sessionID, cwd) => {
+    watchCatalog: (listener) => {
+      catalogListeners.add(listener);
+
+      return () => {
+        catalogListeners.delete(listener);
+      };
+    },
+    session: (sessionID, cwd, requestPermission) => {
       let session = sessions.get(sessionID);
 
       if (!session) {
-        session = open(sessionID, cwd);
+        session = open(sessionID, cwd, requestPermission);
         sessions.set(sessionID, session);
         session.catch(() => {
           if (sessions.get(sessionID) === session) {
@@ -192,6 +218,7 @@ export function createAgyRuntime(options: AgyRuntimeOptions): AgyRuntime {
       generation += 1;
       reset();
       catalog = undefined;
+      catalogListeners.clear();
 
       if (current) {
         const { agy, client } = await current.catch(() => ({ agy: undefined, client: undefined }));

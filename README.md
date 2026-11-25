@@ -92,8 +92,10 @@ pnpm install && pnpm build
 ```
 
 `dist/index.js` holds everything the plugin needs, so the folder works without `node_modules`. On its first start the
-plugin asks `agy` for its models, which opens and closes an ACP session without prompting; the list is saved and
-refreshed on each start.
+plugin asks `agy` for its models, which opens and closes an ACP session without prompting; the list is saved. Later
+starts launch nothing: `agy` starts with the first Antigravity turn, and the session that turn opens refreshes the
+list. One `agy` process serves every project the OpenCode server has open, and it ends when the last one closes.
+Each model's context window is taken from what `agy` reports during a turn and saved with the list.
 
 ## Development
 
@@ -127,5 +129,7 @@ nor a network.
 - **Plans, modes and slash commands** that `agy` sends are not shown yet.
 - **File access, terminals and questions** (ACP elicitation) are left to `agy`; serving them from OpenCode would put
   its diffs and prompts in OpenCode's UI.
-- **Context window figures are assumptions** (1,048,576 input, 65,536 output tokens): `agy` does not report them per
-  model.
+- **Output limit is an assumption** (65,536 tokens): `agy` does not report it. The context window is assumed to be
+  1,048,576 tokens only until a model has run a turn; then the window `agy` reports is used.
+- **`agy` stays running once started**, until the OpenCode server closes every project. Ending it when idle needs
+  sessions that survive a restart first (`session/resume`, verified to work with `agy` 1.5.16).

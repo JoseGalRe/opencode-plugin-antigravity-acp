@@ -26,6 +26,11 @@ export type AgyModel = {
    * The display name `agy` gives it (`Gemini 4 Neon`).
    */
   readonly name: string;
+  /**
+   * The context window in tokens, as `agy` reported it in a turn's `usage_update` (`size`). Missing until the model
+   * has run a turn; the default window applies meanwhile.
+   */
+  readonly contextWindow?: number;
 };
 
 /**

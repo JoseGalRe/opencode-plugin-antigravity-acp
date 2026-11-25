@@ -9,43 +9,45 @@ import type {
 } from '@agentclientprotocol/sdk';
 
 /**
- * How the runtime starts `agy acp` and what it asks of OpenCode.
+ * Decides a permission request from `agy`, on behalf of the OpenCode session whose turn asked. Each OpenCode
+ * session registers its own when its ACP session opens, so one `agy` process can serve several OpenCode locations.
+ *
+ * @param request The `session/request_permission` request.
+ * @param sessionID The OpenCode session the ACP session belongs to.
+ * @param signal Aborts when the turn is cancelled.
+ *
+ * @returns The selected option, or `cancelled`.
+ *
+ * @example
+ * ```ts
+ * const requestPermission: RequestPermission = async (request, sessionID) => {
+ *   const check = permissionCheckFor(request);
+ *
+ *   try {
+ *     await ctx.permission.assert({ sessionID, action: check.action, resources: [...check.resources] });
+ *
+ *     return answerPermission(request.options, true);
+ *   } catch {
+ *     return answerPermission(request.options, false);
+ *   }
+ * };
+ * ```
+ */
+export type RequestPermission = (
+  request: RequestPermissionRequest,
+  sessionID: string,
+  signal: AbortSignal,
+) => Promise<RequestPermissionResponse>;
+
+/**
+ * How the runtime starts `agy acp` and where its diagnostics go.
  */
 export type AgyRuntimeOptions = {
   /**
    * How to start the process: the executable, its arguments, working directory and environment. Its stderr goes to
-   * `log`.
+   * `log`. The working directory only matters to `agy` itself: every ACP session names its own.
    */
   readonly process: Omit<AgyProcessOptions, 'onStderr'>;
-  /**
-   * Decides a permission request from `agy`, on behalf of the OpenCode session whose turn asked.
-   *
-   * @param request The `session/request_permission` request.
-   * @param sessionID The OpenCode session the ACP session belongs to.
-   * @param signal Aborts when the turn is cancelled.
-   *
-   * @returns The selected option, or `cancelled`.
-   *
-   * @example
-   * ```ts
-   * requestPermission: async (request, sessionID) => {
-   *   const check = permissionCheckFor(request);
-   *
-   *   try {
-   *     await ctx.permission.assert({ sessionID, ...check, resources: [...check.resources] });
-   *
-   *     return answerPermission(request.options, true);
-   *   } catch {
-   *     return answerPermission(request.options, false);
-   *   }
-   * },
-   * ```
-   */
-  readonly requestPermission: (
-    request: RequestPermissionRequest,
-    sessionID: string,
-    signal: AbortSignal,
-  ) => Promise<RequestPermissionResponse>;
   /**
    * Receives diagnostics: `agy`'s stderr, process exits and failures that do not reach a turn.
    *
@@ -111,7 +113,7 @@ export type AgySession = {
 export type AgyRuntime = {
   /**
    * Reads what `agy` offers this client by opening and closing a session; no prompt, so no quota is spent. The
-   * answer is kept; a failed read is retried on the next call.
+   * answer is kept; a failed read is retried on the next call. Listeners of `watchCatalog` hear it too.
    *
    * @returns The Gemini models and the thinking levels.
    *
@@ -122,20 +124,35 @@ export type AgyRuntime = {
    */
   readonly catalog: () => Promise<AgyCatalog>;
   /**
+   * Follows the catalog: the listener hears it each time `agy` sends it, from `catalog()` or from any new session's
+   * config options, so a saved catalog is refreshed by the first real session without a separate read.
+   *
+   * @param listener Receives the catalog, never with an empty model list.
+   *
+   * @returns A function that stops the listener; safe to call more than once.
+   *
+   * @example
+   * ```ts
+   * const stop = runtime.watchCatalog((catalog) => saveAndRegister(catalog));
+   * ```
+   */
+  readonly watchCatalog: (listener: (catalog: AgyCatalog) => void) => () => void;
+  /**
    * The ACP session of an OpenCode session, created on first use in `cwd`. Concurrent calls for the same OpenCode
    * session share one `session/new`. Sessions are lost when the process exits: the next call creates a new one.
    *
    * @param sessionID The OpenCode session ID.
    * @param cwd The absolute directory the session works in.
+   * @param requestPermission Decides the session's permission requests; the first call's handler is kept.
    *
    * @returns The ACP session.
    *
    * @example
    * ```ts
-   * const session = await runtime.session(sessionID, ctx.location.directory);
+   * const session = await runtime.session(sessionID, ctx.location.directory, requestPermission);
    * ```
    */
-  readonly session: (sessionID: string, cwd: string) => Promise<AgySession>;
+  readonly session: (sessionID: string, cwd: string, requestPermission: RequestPermission) => Promise<AgySession>;
   /**
    * Closes the ACP session of an OpenCode session, if it has one. Safe to call for unknown sessions.
    *
@@ -150,13 +167,13 @@ export type AgyRuntime = {
    */
   readonly forget: (sessionID: string) => Promise<void>;
   /**
-   * Ends the `agy` process and forgets every session. Safe to call more than once.
+   * Ends the `agy` process and forgets every session and catalog listener. Safe to call more than once.
    *
    * @returns Resolves once the process has been told to stop.
    *
    * @example
    * ```ts
-   * return () => runtime.dispose();
+   * await runtime.dispose();
    * ```
    */
   readonly dispose: () => Promise<void>;

@@ -7,8 +7,9 @@ import type { SessionConfigOption, SessionConfigSelectOption } from '@agentclien
 import type { Model } from '@opencode/plugin';
 
 /**
- * The context window reported for every model, in tokens. `agy` does not list it per model; this is the window of
- * current Gemini models and an assumption until `agy` reports one.
+ * The context window reported for a model until it has run a turn, in tokens. `agy` lists no window per model; it
+ * reports the window in each turn's `usage_update` (1,048,576 for Gemini 4 Neon with agy 1.5.16), which then
+ * replaces this.
  */
 const CONTEXT_WINDOW = 1_048_576;
 
@@ -53,11 +54,58 @@ export function parseCatalog(value: unknown): AgyCatalog | undefined {
     return undefined;
   }
 
-  const parsed = models.filter(isAgyModel).filter((model) => isGeminiModel(model.id));
+  const parsed = models
+    .filter(isAgyModel)
+    .filter((model) => isGeminiModel(model.id))
+    .map(({ id, name, contextWindow }) => (isTokenCount(contextWindow) ? { id, name, contextWindow } : { id, name }));
 
   return parsed.length > 0
     ? { models: parsed, thoughtLevels: thoughtLevels.filter((level) => typeof level === 'string') }
     : undefined;
+}
+
+/**
+ * Keeps the context windows already learned when `agy` sends the catalog again: its config options carry no window,
+ * so a fresh catalog would otherwise forget them.
+ *
+ * @param next The catalog `agy` just sent.
+ * @param previous The catalog known so far, if any.
+ *
+ * @returns `next`, with each model's window from `previous` when `next` has none.
+ */
+export function keepContextWindows(next: AgyCatalog, previous: AgyCatalog | undefined): AgyCatalog {
+  const windows = new Map(previous?.models.map((model) => [model.id, model.contextWindow]));
+
+  return {
+    models: next.models.map((model) => {
+      const contextWindow = model.contextWindow ?? windows.get(model.id);
+
+      return contextWindow === undefined ? model : { ...model, contextWindow };
+    }),
+    thoughtLevels: next.thoughtLevels,
+  };
+}
+
+/**
+ * Records the context window `agy` reported for a model.
+ *
+ * @param catalog The catalog known so far.
+ * @param modelId The model that reported it (`gemini-4-neon`).
+ * @param contextWindow The window in tokens.
+ *
+ * @returns The updated catalog, or `undefined` when nothing changes: unknown model, invalid window or same window.
+ */
+export function withContextWindow(catalog: AgyCatalog, modelId: string, contextWindow: number): AgyCatalog | undefined {
+  const model = catalog.models.find(({ id }) => id === modelId);
+
+  if (!model || !isTokenCount(contextWindow) || model.contextWindow === contextWindow) {
+    return undefined;
+  }
+
+  return {
+    models: catalog.models.map((known) => (known === model ? { ...known, contextWindow } : known)),
+    thoughtLevels: catalog.thoughtLevels,
+  };
 }
 
 /**
@@ -91,12 +139,21 @@ export function toModelInfo(model: AgyModel, thoughtLevels: readonly string[]): 
       output: ['text'],
     },
     variants: thoughtLevels.map((level) => ({ id: toVariantId(level) })),
-    time: { released: 0 },
+    time: {
+      released: 0,
+    },
     cost: [],
     status: 'active',
     enabled: true,
-    limit: { context: CONTEXT_WINDOW, output: OUTPUT_LIMIT },
+    limit: {
+      context: model.contextWindow ?? CONTEXT_WINDOW,
+      output: OUTPUT_LIMIT,
+    },
   };
+}
+
+function isTokenCount(value: unknown): value is number {
+  return typeof value === 'number' && Number.isInteger(value) && value > 0;
 }
 
 function isAgyModel(value: unknown): value is AgyModel {
