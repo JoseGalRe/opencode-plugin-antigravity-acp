@@ -16,8 +16,36 @@ plugin does the same for OpenCode: it is an ACP **client** that starts `agy acp`
 
 ## How it works
 
-```text
-OpenCode ──▶ this plugin (ACP client) ──stdio, JSON-RPC──▶ agy acp ──▶ Google Antigravity
+The plugin runs inside OpenCode and talks to `agy acp`, a subprocess on your machine, over stdio with JSON-RPC. Only
+`agy` talks to Google. One turn:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor You
+    participant OC as OpenCode
+    participant P as Plugin (ACP client)
+    participant A as agy acp (subprocess)
+    participant G as Google Antigravity
+    You->>OC: Message to antigravity/gemini-4-neon (variant high)
+    OC->>P: doStream with the session and the variant
+    Note over P,A: agy starts with the first turn and is shared by every open project
+    P->>A: session/new on the session's first turn
+    P->>A: session/set_config_option for the model and thought_level
+    P->>A: session/prompt with your new input only
+    A->>G: Model calls with agy's own sign-in
+    loop While agy works
+        A-->>P: session/update with thoughts, text and tool calls
+        P-->>OC: Reasoning, text and completed tool calls
+        opt agy asks for permission
+            A->>P: session/request_permission
+            P->>OC: Check your permission rules (shell, edit, read, ...)
+            OC-->>P: Allow or deny, asking you when no rule matches
+            P-->>A: The selected option
+        end
+    end
+    A-->>P: Stop reason and token usage
+    P-->>OC: Finish with the token usage
 ```
 
 - **A provider in OpenCode.** The plugin lists the Gemini models `agy` offers under `antigravity/…`, with `agy`'s
