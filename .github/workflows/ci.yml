@@ -1,5 +1,9 @@
-# Checks every push to main and every pull request on GitHub with the same gate a change needs locally
-# (`pnpm ready`: vp check and every test) and builds the plugin. It publishes nothing: publish.yml does.
+# Checks every push to main and every pull request with the same gate a change needs locally (`pnpm ready`: vp check
+# and every test) and builds the plugin. It publishes nothing: publish.yml does.
+#
+# GitHub and the Gitea mirror both run this file: Gitea reads `.github/workflows` when the repository has no
+# `.gitea/workflows`. On GitHub the job runs on `ubuntu-latest`; on Gitea, on the self-hosted runner labelled `linux`
+# (host mode on AGAMOTTO), where setup-node keeps Node in the runner's tool cache.
 name: CI
 
 on:
@@ -11,12 +15,12 @@ permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   ready:
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-latest' || 'linux' }}
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

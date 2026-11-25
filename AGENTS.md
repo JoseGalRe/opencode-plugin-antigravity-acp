@@ -91,8 +91,10 @@ Vite+ (`vp`) owns formatting, linting, the type check (tsrs, no `typescript` pac
   `vite.config.ts`): add a package there when it ends up in the bundle.
 - Scripts: `test`, `lint:check` / `lint:fix`, `format:check` / `format:fix`, `cspell:check`, `smoke`, `release`.
   Name new ones `<tool>:<action>`.
-- CI (`.gitea/workflows/ci.yml`) runs `pnpm ready` and `pnpm build` on every push to `main` and every pull request,
-  on the self-hosted `linux` runner. It publishes nothing.
+- CI (`.github/workflows/ci.yml`) runs `pnpm ready` and `pnpm build` on every push to `main` and every pull request,
+  on GitHub (`ubuntu-latest`) and on the Gitea mirror (self-hosted runner labelled `linux`, host mode on AGAMOTTO):
+  Gitea reads `.github/workflows` because the repository has no `.gitea/workflows`. Do not add one: Gitea would then
+  ignore `.github/workflows`. `publish.yml` runs its job on GitHub only (npm trusts GitHub's OIDC, not Gitea's).
 
 ## Releases
 
@@ -115,7 +117,11 @@ Every new version ships as a Gitea release, with its notes and the plugin file r
    `pnpm ready` and `pnpm build`, and runs `npm publish` with npm trusted publishing (OIDC, `id-token: write`): no npm
    token is stored anywhere, and npm adds provenance. The package's trusted publisher on npmjs.com names this repository
    and `publish.yml`, and must allow `npm publish` (newer configurations allow only `npm stage publish` by default).
-3. `.github/workflows/ci.yml` runs the same gate as the Gitea CI on GitHub. Actions are pinned to commit SHAs with the
+   A version already on npm is skipped, so pushing the tag of a version published by hand is harmless. A second job,
+   `release` (the only one with `contents: write`), then creates or updates the tag's GitHub release like the Gitea
+   one: the CHANGELOG.md section as notes (`scripts/release-notes.ts`) and the build npm got, passed between the jobs
+   as an artifact, attached as `opencode-plugin-antigravity-acp-<version>.js`.
+3. `.github/workflows/ci.yml` is the CI of both GitHub and Gitea (see Toolchain). Actions are pinned to commit SHAs with the
    version in a comment; update both together.
 
 `repository.url` in package.json must stay the GitHub repository: npm checks it against the provenance. The Gitea
