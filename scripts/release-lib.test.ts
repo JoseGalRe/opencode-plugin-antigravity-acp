@@ -49,4 +49,8 @@ describe('assetName', () => {
   it('names the plugin file after the package and the version', () => {
     expect(assetName('opencode-plugin-antigravity-acp', '0.1.0')).toBe('opencode-plugin-antigravity-acp-0.1.0.js');
   });
+
+  it('leaves the scope of a scoped package out of the file name', () => {
+    expect(assetName('@josegalre/opencode-plugin-antigravity-acp', '0.4.1')).toBe('opencode-plugin-antigravity-acp-0.4.1.js');
+  });
 });

@@ -49,5 +49,8 @@ export function repositoryOf(remote: string): Repository | null {
  * @returns The asset name (`opencode-plugin-antigravity-acp-0.1.0.js`).
  */
 export function assetName(packageName: string, version: string): string {
-  return `${packageName}-${version}.js`;
+  // A scoped name (`@josegalre/x`) cannot be a file name: the scope is left out.
+  const name = packageName.slice(packageName.lastIndexOf('/') + 1);
+
+  return `${name}-${version}.js`;
 }
