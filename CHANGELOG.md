@@ -1,5 +1,13 @@
 # opencode-plugin-antigravity-acp
 
+## 0.4.1
+
+### Patch Changes
+
+- Published on npm as `@josegalre/opencode-plugin-antigravity-acp`, under the MIT license: install it with
+  `opencode plugin add @josegalre/opencode-plugin-antigravity-acp`. Built and published from GitHub Actions with npm
+  provenance.
+
 ## 0.4.0
 
 ### Minor Changes
