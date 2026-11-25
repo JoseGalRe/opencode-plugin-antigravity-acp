@@ -1,15 +1,18 @@
-# Checks every push to main and every pull request with the same gate a change needs locally (`pnpm ready`: vp check
-# and every test) and builds the plugin. It publishes nothing: publish.yml does.
+# Runs the same gate a change needs locally (`pnpm ready`: vp check and every test) and builds the plugin, for a release
+# tag, a pull request or a manual run. Pushes to main run nothing: a version is checked when it is tagged. It publishes
+# nothing: publish.yml does.
 #
 # GitHub and the Gitea mirror both run this file: Gitea reads `.github/workflows` when the repository has no
-# `.gitea/workflows`. On GitHub the job runs on `ubuntu-latest`; on Gitea, on the self-hosted runner labelled `linux`
-# (host mode on AGAMOTTO), where setup-node keeps Node in the runner's tool cache.
+# `.gitea/workflows`. On Gitea a tag from `pnpm release` runs it on the self-hosted runner labelled `linux` (host mode
+# on AGAMOTTO). On GitHub a tag runs publish.yml, which runs the same gate before it publishes, so this job runs there
+# only for pull requests and manual runs.
 name: CI
 
 on:
   push:
-    branches: [main]
+    tags: ['v*']
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -20,6 +23,7 @@ concurrency:
 
 jobs:
   ready:
+    if: github.server_url != 'https://github.com' || github.event_name != 'push'
     runs-on: ${{ github.server_url == 'https://github.com' && 'ubuntu-latest' || 'linux' }}
     timeout-minutes: 20
     steps:
