@@ -53,6 +53,31 @@ describe('toAcpPrompt', () => {
     ]);
   });
 
+  it('leaves out the checkpoint OpenCode replays after a compaction, whole or split', () => {
+    const checkpoint =
+      '<conversation-checkpoint>\nThe following is a summary.\n<summary>\nDone.\n</summary>\n</conversation-checkpoint>';
+
+    const whole: PromptMessage[] = [
+      { role: 'user', content: [{ type: 'text', text: checkpoint }] },
+      { role: 'user', content: [{ type: 'text', text: 'next question' }] },
+    ];
+
+    const split: PromptMessage[] = [
+      {
+        role: 'user',
+        content: [
+          { type: 'text', text: '<conversation-checkpoint>\nThe following is a summary.' },
+          { type: 'text', text: 'user: earlier question' },
+          { type: 'text', text: '</conversation-checkpoint>' },
+          { type: 'text', text: 'next question' },
+        ],
+      },
+    ];
+
+    expect(toAcpPrompt(whole)).toEqual([{ type: 'text', text: 'next question' }]);
+    expect(toAcpPrompt(split)).toEqual([{ type: 'text', text: 'next question' }]);
+  });
+
   it('returns nothing when the prompt ends with the assistant', () => {
     const prompt: PromptMessage[] = [
       { role: 'user', content: [{ type: 'text', text: 'question' }] },
