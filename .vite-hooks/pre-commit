@@ -1,0 +1,4 @@
+# Formats what is staged and stages the result (the `staged` block of
+# vite.config.ts), then lints and type-checks the whole project.
+vp staged
+vp check --no-fmt

@@ -1,0 +1,16 @@
+{
+  "biome.enabled": false,
+  "editor.defaultFormatter": "oxc.oxc-vscode",
+  "editor.formatOnSave": true,
+  "explorer.fileNesting.patterns": {
+    "*.ts": "$(capture).ts, $(capture).*.ts, $(capture)-*.ts, $(capture)-*.json",
+    ".gitignore": ".gitattributes*, .gitignore*, .git-blame-ignore",
+    "package.json": ".browserslist*, .editorconfig*, oxfmt*, oxlint*, cspell.json, opencode.json, *.config.ts, package*.json, tsconfig.*, pnpm*, .pnpm*, .npm*",
+    "README.md": "AGENTS.md, CLAUDE.md"
+  },
+  "oxc.enable": true,
+  "prettier.enable": false,
+  "[typescript]": {
+    "editor.defaultFormatter": "oxc.oxc-vscode"
+  }
+}

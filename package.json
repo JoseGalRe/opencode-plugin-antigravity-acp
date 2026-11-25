@@ -1,0 +1,43 @@
+{
+  "name": "opencode-plugin-antigravity-acp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Google Antigravity in OpenCode through the official `agy acp` Agent Client Protocol server.",
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "prepare": "vp config --no-agent",
+    "build": "vp pack",
+    "test": "vp test",
+    "lint:check": "vp lint",
+    "lint:fix": "vp lint --fix",
+    "format:check": "vp format --check",
+    "format:fix": "vp format",
+    "ready": "vp check && vp test",
+    "smoke": "node scripts/smoke-agy.ts --session"
+  },
+  "devDependencies": {
+    "@agentclientprotocol/sdk": "2.12.0",
+    "@opencode/plugin": "2.4.1",
+    "@types/node": "22.20.5",
+    "vite-plus": "1.8.0",
+    "zod": "4.6.7"
+  },
+  "engines": {
+    "node": ">=26.13.1",
+    "pnpm": ">=12.16.1",
+    "runtime": {
+      "name": "node",
+      "version": "26.13.1",
+      "onFail": "download"
+    }
+  }
+}

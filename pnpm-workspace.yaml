@@ -1,0 +1,24 @@
+autoInstallPeers: true
+
+blockExoticSubdeps: true
+
+dedupePeers: true
+
+engineStrict: true
+
+# Set a minimum release age (in minutes) for packages to be considesred for installation.
+# This helps avoid installing packages that were just published and may not be fully propagated yet.
+# And also helps to reduce the chain attack target in npm registry.
+minimumReleaseAge: 1440
+
+saveExact: true
+
+savePrefix: ''
+
+shellEmulator: true
+
+strictPeerDependencies: true
+
+trustLockfile: true
+
+verifyDepsBeforeRun: false
